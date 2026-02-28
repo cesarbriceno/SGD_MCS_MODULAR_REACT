@@ -1,0 +1,27 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { viteSingleFile } from 'vite-plugin-singlefile';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react(), viteSingleFile()],
+  root: '.', // La raíz es la carpeta actual (frontend)
+  build: {
+    outDir: '../backend', // ¡MAGIA! Construye el archivo final directamente en la carpeta backend
+    emptyOutDir: false,   // No borres los scripts .gs que pondremos en backend
+    target: 'esnext',
+    assetsInlineLimit: 100000000, // Fuerza a que todo (imágenes, estilos) se incruste en el HTML
+    chunkSizeWarningLimit: 100000000,
+    brotliSize: false,
+    rollupOptions: {
+      output: {
+        inlineDynamicImports: true, // Evita que corte el código en pedazos
+      },
+    },
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+});
