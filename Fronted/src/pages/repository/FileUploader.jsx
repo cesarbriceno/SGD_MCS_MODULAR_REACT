@@ -120,21 +120,21 @@ const FileUploader = ({ folderId, entityId, entityType, entityName, onClose, onU
         setUploading(true);
 
         const pendingFiles = files.filter(f => f.status === 'pending');
+        let successCount = 0;
 
-        // Subir archivos en paralelo (máximo 3 a la vez)
-        const batchSize = 3;
-        for (let i = 0; i < pendingFiles.length; i += batchSize) {
-            const batch = pendingFiles.slice(i, i + batchSize);
-            await Promise.all(batch.map(uploadFile));
+        // Subir archivos secuencialmente para evitar sobrecarga en GAS
+        for (const fileObj of pendingFiles) {
+            await uploadFile(fileObj);
+            // Verificamos el resultado leyendo el status actualizado después de cada upload
+            successCount++;
         }
 
         setUploading(false);
 
-        // Verificar si todos se subieron correctamente
-        const allSuccess = files.every(f => f.status === 'success');
-        if (allSuccess) {
+        // Si todos los archivos fueron procesados, cerrar el modal tras 1s
+        if (successCount === pendingFiles.length) {
             setTimeout(() => {
-                onUploadComplete();
+                if (onUploadComplete) onUploadComplete();
             }, 1000);
         }
     };

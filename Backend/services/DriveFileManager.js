@@ -204,6 +204,42 @@ function uploadFile(folderId, fileData) {
 }
 
 /**
+ * Lista todos los archivos (no carpetas) dentro de una carpeta de Drive.
+ * Llamado desde el frontend como: api.drive.getFiles(folderId)
+ * @param {string} folderId - ID de la carpeta de Drive
+ * @returns {string} JSON con array de archivos [{id, name, mimeType, url, size, lastUpdated}]
+ */
+function getFiles(folderId) {
+    try {
+        if (!folderId) return JSON.stringify([]);
+
+        const folder = DriveApp.getFolderById(folderId);
+        const filesIter = folder.getFiles();
+        const result = [];
+
+        while (filesIter.hasNext()) {
+            const file = filesIter.next();
+            result.push({
+                id: file.getId(),
+                name: file.getName(),
+                mimeType: file.getMimeType(),
+                url: file.getUrl(),
+                size: file.getSize(),
+                lastUpdated: file.getLastUpdated().toISOString()
+            });
+        }
+
+        // Ordenar por fecha desc (más reciente primero)
+        result.sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated));
+
+        return JSON.stringify(result);
+    } catch (e) {
+        Logger.log('Error en getFiles: ' + e.toString());
+        return JSON.stringify([]);
+    }
+}
+
+/**
  * Elimina un archivo (mueve a papelera)
  * @param {string} fileId - ID del archivo
  * @returns {Object} {success, message}

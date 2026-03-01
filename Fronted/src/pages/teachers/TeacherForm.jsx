@@ -250,7 +250,12 @@ const TeacherForm = () => {
             {activeMainTab === 'docs' && id ? (
                 <div className="relative z-10 max-w-5xl mx-auto">
                     <div className="glass-card-premium p-10 rounded-[2.5rem] border-indigo-500/20">
-                        <DocumentArchive beneficiaryId={id} beneficiaryName={`${formData.Nombre1} ${formData.Apellido1}`} />
+                        <DocumentArchive
+                            beneficiaryId={id}
+                            beneficiaryName={`${formData.Nombre1} ${formData.Apellido1}`}
+                            folderId={formData.ID_Carpeta_Drive}
+                            entityType="docente"
+                        />
                     </div>
                 </div>
             ) : (
