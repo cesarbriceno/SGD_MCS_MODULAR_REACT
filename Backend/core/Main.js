@@ -32,6 +32,7 @@ function getDocuments() { return listDocuments(); }
 
 // Buscador
 function searchUniversal(query, context) { return executeSearch(query, context); }
+function searchUniversalRepository(query) { return searchUniversalRepository(query); }
 
 // Drive - Carpetas y Archivos (Pasan directo ya que sus nombres coinciden)
 // createItem, updateItem, deleteItem, bulkUpdateItems, bulkDeleteItems

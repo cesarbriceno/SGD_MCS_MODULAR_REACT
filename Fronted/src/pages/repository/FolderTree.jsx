@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen } from 'lucide-react';
 import { api } from '../../services/api';
 
-const FolderTree = ({ currentFolder, onFolderClick }) => {
+const FolderTree = ({ currentFolder, onFolderClick, refreshTrigger }) => {
     const [expandedFolders, setExpandedFolders] = useState(new Set());
     const [folderStructure, setFolderStructure] = useState(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         loadFolderTree();
-    }, []);
+    }, [refreshTrigger]);
 
     const loadFolderTree = async () => {
         setLoading(true);

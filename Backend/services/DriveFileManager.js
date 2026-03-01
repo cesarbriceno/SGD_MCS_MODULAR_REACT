@@ -303,9 +303,10 @@ function searchFilesInFolder(folderId, query) {
         if (!folderId || !query) return [];
 
         const folder = DriveApp.getFolderById(folderId);
-        const files = folder.searchFiles(`title contains "${query}"`);
         const results = [];
 
+        // 1. Buscar Archivos
+        const files = folder.searchFiles(`title contains "${query}"`);
         while (files.hasNext()) {
             const file = files.next();
             results.push({
@@ -314,7 +315,25 @@ function searchFilesInFolder(folderId, query) {
                 mimeType: file.getMimeType(),
                 url: file.getUrl(),
                 size: file.getSize(),
-                lastUpdated: file.getLastUpdated().toISOString()
+                lastUpdated: file.getLastUpdated().toISOString(),
+                type: 'file'
+            });
+        }
+
+        // 2. Buscar Carpetas
+        // En GAS para carpetas usamos DriveApp con query de parent
+        const folderQuery = `'${folderId}' in parents and title contains '${query}' and mimeType = 'application/vnd.google-apps.folder'`;
+        const folderIter = DriveApp.searchFolders(folderQuery);
+        while (folderIter.hasNext()) {
+            const folderMatch = folderIter.next();
+            results.push({
+                id: folderMatch.getId(),
+                name: folderMatch.getName(),
+                mimeType: 'application/vnd.google-apps.folder',
+                url: folderMatch.getUrl(),
+                size: 0,
+                lastUpdated: folderMatch.getLastUpdated().toISOString(),
+                type: 'folder'
             });
         }
 
@@ -552,5 +571,70 @@ function createDefaultSubfolders(parentFolderId, entityType) {
     } catch (e) {
         Logger.log('Error en createDefaultSubfolders: ' + e.toString());
         return { success: false, message: e.toString() };
+    }
+}
+
+/**
+ * Realiza una búsqueda recursiva en todo el repositorio desde la raíz del sistema.
+ * @param {string} query - Texto a buscar.
+ * @returns {Array} Resultados combinados de archivos y carpetas.
+ */
+function searchUniversalRepository(query) {
+    try {
+        if (!query) return [];
+        const rootFolder = getSystemRootFolder();
+        const results = [];
+        const limit = 50; // Límite de seguridad
+
+        searchRecursiveHelper(rootFolder, query, results, limit, 0);
+
+        return results;
+    } catch (e) {
+        Logger.log('Error en searchUniversalRepository: ' + e.toString());
+        return [];
+    }
+}
+
+/**
+ * Helper recursivo para búsqueda profunda en Drive.
+ */
+function searchRecursiveHelper(folder, query, results, limit, depth) {
+    if (results.length >= limit || depth > 4) return; // Límites de seguridad
+
+    // 1. Buscar Archivos en esta carpeta
+    const files = folder.searchFiles(`title contains "${query}"`);
+    while (files.hasNext() && results.length < limit) {
+        const file = files.next();
+        results.push({
+            id: file.getId(),
+            name: file.getName(),
+            mimeType: file.getMimeType(),
+            url: file.getUrl(),
+            size: file.getSize(),
+            lastUpdated: file.getLastUpdated().toISOString(),
+            type: 'file'
+        });
+    }
+
+    // 2. Buscar Subcarpetas y recurrir
+    const subfolders = folder.getFolders();
+    while (subfolders.hasNext() && results.length < limit) {
+        const subfolder = subfolders.next();
+
+        // Si el nombre de la carpeta coincide, agregarla a resultados
+        if (subfolder.getName().toLowerCase().includes(query.toLowerCase())) {
+            results.push({
+                id: subfolder.getId(),
+                name: subfolder.getName(),
+                mimeType: 'application/vnd.google-apps.folder',
+                url: subfolder.getUrl(),
+                size: 0,
+                lastUpdated: subfolder.getLastUpdated().toISOString(),
+                type: 'folder'
+            });
+        }
+
+        // Continuar buscando en hijos
+        searchRecursiveHelper(subfolder, query, results, limit, depth + 1);
     }
 }

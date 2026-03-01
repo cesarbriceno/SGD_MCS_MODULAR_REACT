@@ -294,6 +294,7 @@ export const api = {
         getFolderTree: (folderId, depth = 2) => cachedDriveCall(`tree_${folderId}_${depth}`, () => runGoogleFunction('getFolderStructure', [folderId, depth]), 120000), // 2 min para el árbol
 
         searchFiles: (folderId, query) => runGoogleFunction('searchFilesInFolder', [folderId, query]),
+        searchUniversal: (query) => runGoogleFunction('searchUniversalRepository', [query]),
         getRecentFiles: (entityType, limit = 10) => runGoogleFunction('getRecentFiles', [entityType, limit]),
 
         // Plantillas

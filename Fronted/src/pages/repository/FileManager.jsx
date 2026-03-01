@@ -158,7 +158,7 @@ const FileManager = ({
 
     const allItems = [
         ...folders.map(f => ({ ...f, isFolder: true })),
-        ...files.map(f => ({ ...f, isFolder: false }))
+        ...files.map(f => ({ ...f, isFolder: f.type === 'folder' }))
     ];
 
     if (allItems.length === 0) {

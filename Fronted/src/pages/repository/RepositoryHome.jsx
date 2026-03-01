@@ -21,6 +21,7 @@ const RepositoryHome = () => {
     // Navegación
     const [currentFolder, setCurrentFolder] = useState(null);
     const [breadcrumbs, setBreadcrumbs] = useState([{ id: 'root', name: 'Repositorio' }]);
+    const [treeRefreshKey, setTreeRefreshKey] = useState(0);
 
     // Datos
     const [files, setFiles] = useState([]);
@@ -36,6 +37,20 @@ const RepositoryHome = () => {
     useEffect(() => {
         loadRootFolder();
     }, []);
+
+    // Búsqueda reactiva (Debounce)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery.trim()) {
+                handleSearch();
+            } else if (currentFolder) {
+                // Si borra la búsqueda, volver al contenido normal
+                loadFolderContents(currentFolder.id);
+            }
+        }, 500); // 500ms de espera
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const loadRootFolder = async () => {
         setLoading(true);
@@ -120,16 +135,19 @@ const RepositoryHome = () => {
     };
 
     const handleSearch = async () => {
-        if (!searchQuery.trim() || !currentFolder) return;
+        if (!searchQuery.trim()) return;
 
         setLoading(true);
         try {
-            const results = await api.drive.searchFiles(currentFolder.id, searchQuery);
-            setFiles(results || []);
-            setFolders([]); // En búsqueda no mostramos subcarpetas por ahora
+            const results = await api.drive.searchUniversal(searchQuery);
+            const foundFiles = (results || []).filter(item => item.type === 'file');
+            const foundFolders = (results || []).filter(item => item.type === 'folder');
+
+            setFiles(foundFiles);
+            setFolders(foundFolders);
         } catch (error) {
             console.error('Error searching:', error);
-            toast.error('Error', 'Falló la búsqueda');
+            // toast.error('Error', 'Falló la búsqueda');
         } finally {
             setLoading(false);
         }
@@ -145,6 +163,7 @@ const RepositoryHome = () => {
             if (result.success) {
                 toast.success('Éxito', 'Carpeta creada correctamente');
                 loadFolderContents(currentFolder.id);
+                setTreeRefreshKey(prev => prev + 1);
             } else {
                 toast.error('Error', result.message || 'Error al crear carpeta');
             }
@@ -178,6 +197,7 @@ const RepositoryHome = () => {
 
             toast.success('Completado', `Se eliminaron ${successCount} elementos correctamente`);
             loadFolderContents(currentFolder.id);
+            setTreeRefreshKey(prev => prev + 1);
             setSelectedItems([]);
         } catch (error) {
             console.error('Bulk delete error:', error);
@@ -193,6 +213,7 @@ const RepositoryHome = () => {
         } else {
             loadRootFolder();
         }
+        setTreeRefreshKey(prev => prev + 1);
     };
 
     return (
@@ -339,6 +360,7 @@ const RepositoryHome = () => {
                         <FolderTree
                             currentFolder={currentFolder}
                             onFolderClick={handleFolderClick}
+                            refreshTrigger={treeRefreshKey}
                         />
                     </div>
                 </div>
