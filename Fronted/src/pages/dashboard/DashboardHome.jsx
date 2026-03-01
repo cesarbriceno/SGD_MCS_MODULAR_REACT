@@ -1,150 +1,131 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useDashboardAnalytics } from '../../hooks/useDashboardAnalytics';
-import { DashboardLayout } from '../../components/dashboard/DashboardLayout';
-import { AreaChart, Area, ResponsiveContainer, CartesianGrid, XAxis, Tooltip } from 'recharts';
-import { Activity, TrendingUp, Users, Award } from 'lucide-react';
-import { ChartContainer } from '../../components/dashboard/AutoevaluationCharts';
+import { StudentsModule } from '../../components/dashboard/modules/StudentsModule';
+import { DocentesModule } from '../../components/dashboard/modules/DocentesModule';
+import { TesisModule } from '../../components/dashboard/modules/TesisModule';
+import { EventosModule } from '../../components/dashboard/modules/EventosModule';
+import { EntornoModule } from '../../components/dashboard/modules/EntornoModule';
+import { ExternosModule } from '../../components/dashboard/modules/ExternosModule';
+import { Calendar, Users, Briefcase, BookOpen, Presentation, Building2, Globe2 } from 'lucide-react';
 
-// --- MÓDULOS ESPECÍFICOS ---
-import FactorStudents from '../../components/dashboard/FactorStudents';
-import FactorImpact from '../../components/dashboard/FactorImpact';
-// Reutilizamos los que ya teníamos para Docentes y Entorno, o los movemos a Factor...
-import { EducationPyramid, ResearchWordCloud } from '../../components/dashboard/FacultyCharts';
-import { EventsEvolution, PartnersRadar } from '../../components/dashboard/EnvironmentCharts';
-import GeoMap from '../../components/dashboard/GeoMap';
+const TABS = [
+    { id: 'estudiantes', label: 'Estudiantes & Egresados', icon: Users },
+    { id: 'docentes', label: 'Cuerpo Académico', icon: Briefcase },
+    { id: 'tesis', label: 'Tesis de Grado', icon: BookOpen },
+    { id: 'eventos', label: 'Eventos', icon: Presentation },
+    { id: 'entorno', label: 'Instituciones', icon: Building2 },
+    { id: 'externos', label: 'Participantes Externos', icon: Globe2 },
+];
 
-// --- SUB-COMPONENTES DE TILES (VISTAS) ---
-
-const KPIStat = ({ title, value, subtext, icon: Icon, trend }) => (
-    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-        <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-blue-50 dark:bg-slate-700/50 rounded-xl text-primary">
-                <Icon size={24} />
-            </div>
-            {trend && (
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                    {trend === 'up' ? '▲ Alta' : '▼ Baja'}
-                </span>
-            )}
-        </div>
-        <h3 className="text-3xl font-bold text-slate-800 dark:text-white mb-1">{value}</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{title}</p>
-        <p className="text-xs text-slate-400 mt-2">{subtext}</p>
-    </div>
-);
-
-const GlobalView = ({ kpis, analytics, darkMode }) => (
-    <div className="space-y-6 animate-fade-in">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <KPIStat title="Total Estudiantes" value={kpis?.totalStudents || 0} icon={Users} subtext="En ventana seleccionada" />
-            <KPIStat title="Tasa Retención" value={`${kpis?.retencionAvg || 0}%`} icon={Activity} subtext="Promedio global" trend={kpis?.retencionAvg > 80 ? 'up' : 'down'} />
-            <KPIStat title="Graduados" value={kpis?.graduados || 0} icon={Award} subtext="Total acumulado" />
-            <KPIStat title="Relación Doc/Est" value={kpis?.ratio || 0} icon={TrendingUp} subtext="Calidad académica" />
-        </div>
-
-        <ChartContainer title="Tendencia de Matrícula" downloadId="global_trend">
-            <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={analytics.charts.survival.length > 0 ? analytics.charts.survival : []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    {/* Usando datos de supervivencia provisionalmente como visualización de tendencia */}
-                    <defs>
-                        <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid vertical={false} stroke={darkMode ? "#334155" : "#e2e8f0"} />
-                    <XAxis hide />
-                    <Tooltip contentStyle={{ backgroundColor: darkMode ? '#1e293b' : '#fff', border: 'none' }} />
-                    <Area type="monotone" dataKey="value" stroke="#3b82f6" fillOpacity={1} fill="url(#colorTrend)" />
-                </AreaChart>
-            </ResponsiveContainer>
-        </ChartContainer>
-    </div>
-);
-
-
-// --- MAIN DASHBOARD COMPONENT ---
-
-const Dashboard = () => {
-    // Estado
-    const [rawDB, setRawDB] = useState(null);
+const DashboardHome = () => {
     const [loading, setLoading] = useState(true);
-    const [activeModule, setActiveModule] = useState('global');
-    const [yearRange, setYearRange] = useState([2019, 2025]);
-    const [darkMode, setDarkMode] = useState(false); // Podría venir de un Contexto global
+    const [rawDatabase, setRawDatabase] = useState(null);
+    const [activeTab, setActiveTab] = useState('estudiantes');
+    const [timeRange, setTimeRange] = useState([2015, new Date().getFullYear()]);
 
-    // Cargar datos
     useEffect(() => {
         const load = async () => {
             try {
                 const response = await api.getStats();
                 const data = typeof response === 'string' ? JSON.parse(response) : response;
                 if (data.success) {
-                    setRawDB(data.stats.datasets);
+                    setRawDatabase({
+                        students: data.stats.datasets?.estudiantes || [],
+                        theses: data.stats.datasets?.tesis || [],
+                        eventos: data.stats.datasets?.eventos || [],
+                        docentes: data.stats.datasets?.docentes || [],
+                        convenios: data.stats.datasets?.convenios || [],
+                        externos: data.stats.datasets?.externos || []
+                    });
                 }
-            } catch (e) { console.error("Error loading dashboard data", e); }
+            } catch (e) { console.error(e); }
             finally { setLoading(false); }
         };
         load();
     }, []);
 
-    // Hook de Lógica
-    // Nota: El hook ahora devuelve estructuras complejas para los nuevos gráficos
-    const { analytics } = useDashboardAnalytics(rawDB, yearRange);
+    // Hook centralizado que provee la data filtrada y normalizada
+    const { filteredData, normalizedDB } = useDashboardAnalytics(rawDatabase, timeRange);
 
-    if (loading || !analytics) {
-        return <div className="h-full flex items-center justify-center text-slate-400">Cargando motor de análisis (Client-Side)...</div>;
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-full p-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (!rawDatabase) {
+        return <div className="p-6 text-red-500">Error: No se pudo cargar la base de datos para el dashboard.</div>;
     }
 
     return (
-        <DashboardLayout
-            activeModule={activeModule}
-            setActiveModule={setActiveModule}
-            yearRange={yearRange}
-            setYearRange={setYearRange}
-        >
-            {/* SUB-MÓDULOS (Renderizado condicional tipo Tabs) */}
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
+            {/* Cabecera / Controles Globales */}
+            <div className="bg-white dark:bg-slate-800 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Análisis y Calidad</h1>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Panel interactivo de trayectoria académica</p>
+                </div>
 
-            {activeModule === 'global' && (
-                <GlobalView kpis={analytics.kpis} analytics={analytics} darkMode={darkMode} />
-            )}
-
-            {activeModule === 'students' && (
-                <FactorStudents analytics={analytics} darkMode={darkMode} />
-            )}
-
-            {activeModule === 'impact' && ( // Nuevo módulo específico Impacto
-                <FactorImpact analytics={analytics} darkMode={darkMode} />
-            )}
-
-            {activeModule === 'faculty' && (
-                <div className="space-y-6 animate-fade-in">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <EducationPyramid data={analytics.charts.teacherFormation} darkMode={darkMode} />
-                        <ResearchWordCloud theses={analytics.filteredData?.theses} />
+                {/* Control de Tiempo Global */}
+                <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-700/50 px-4 py-2 rounded-xl">
+                    <Calendar className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                    <div className="flex flex-col">
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Período de Análisis</span>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="number"
+                                className="w-20 bg-transparent text-sm font-semibold border-b border-transparent focus:border-primary outline-none"
+                                value={timeRange[0]}
+                                onChange={(e) => setTimeRange([parseInt(e.target.value), timeRange[1]])}
+                            />
+                            <span className="text-slate-400">-</span>
+                            <input
+                                type="number"
+                                className="w-20 bg-transparent text-sm font-semibold border-b border-transparent focus:border-primary outline-none"
+                                value={timeRange[1]}
+                                onChange={(e) => setTimeRange([timeRange[0], parseInt(e.target.value)])}
+                            />
+                        </div>
                     </div>
                 </div>
-            )}
+            </div>
 
-            {activeModule === 'geo' && (
-                <div className="space-y-4 animate-fade-in">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Distribución Geográfica</h2>
-                    <GeoMap data={analytics.charts.geo} darkMode={darkMode} />
-                </div>
-            )}
+            {/* Navegación por Pestañas */}
+            <div className="px-6 border-b border-slate-200 dark:border-slate-700 flex space-x-6 overflow-x-auto custom-scrollbar">
+                {TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors whitespace-nowrap
+                                ${isActive
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                                }`}
+                        >
+                            <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-slate-400'}`} />
+                            {tab.label}
+                        </button>
+                    )
+                })}
+            </div>
 
-            {activeModule === 'environment' && (
-                <div className="space-y-6 animate-fade-in">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <EventsEvolution data={analytics.charts.events} darkMode={darkMode} />
-                        <PartnersRadar partners={analytics.filteredData?.partners || []} darkMode={darkMode} />
-                    </div>
-                </div>
-            )}
-
-        </DashboardLayout>
+            {/* Contenido principal de las pestañas */}
+            <div className="flex-1 overflow-auto p-6 scroll-smooth">
+                {activeTab === 'estudiantes' && <StudentsModule data={filteredData} />}
+                {activeTab === 'docentes' && <DocentesModule data={filteredData} />}
+                {activeTab === 'tesis' && <TesisModule data={filteredData} />}
+                {activeTab === 'eventos' && <EventosModule data={filteredData} />}
+                {activeTab === 'entorno' && <EntornoModule data={filteredData} />}
+                {activeTab === 'externos' && <ExternosModule data={filteredData} />}
+            </div>
+        </div>
     );
 };
 
-export default Dashboard;
+export default DashboardHome;
