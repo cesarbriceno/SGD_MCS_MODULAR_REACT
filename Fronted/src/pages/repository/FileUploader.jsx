@@ -2,8 +2,9 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, File, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { api } from '../../services/api';
 
-const FileUploader = ({ folderId, onClose, onUploadComplete }) => {
+const FileUploader = ({ folderId, entityId, entityType, entityName, onClose, onUploadComplete }) => {
     const [files, setFiles] = useState([]);
+    // ... (omitting lines for brevity in instruction, will apply correctly below)
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState({});
     const [dragActive, setDragActive] = useState(false);
@@ -87,7 +88,10 @@ const FileUploader = ({ folderId, onClose, onUploadComplete }) => {
             const result = await api.drive.uploadFile(folderId, {
                 name: fileObj.name,
                 content: base64Content,
-                mimeType: fileObj.file.type
+                mimeType: fileObj.file.type,
+                entityId: entityId,   // ID del Estudiante/Docente
+                entityType: entityType,
+                entityName: entityName // Nombre del Estudiante/Docente
             });
 
             clearInterval(progressInterval);

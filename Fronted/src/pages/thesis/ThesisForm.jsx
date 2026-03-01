@@ -105,7 +105,8 @@ const ThesisForm = () => {
                             Fecha_Defensa: getVal('Fecha_Defensa') ? new Date(getVal('Fecha_Defensa')).toISOString().split('T')[0] : '',
                             Numero_Acta_Sustentacion: getVal('Numero_Acta_Sustentacion'),
                             URL_Documento: getVal('URL_Documento'),
-                            URL_Carpeta_Drive: getVal('URL_Carpeta_Drive')
+                            URL_Carpeta_Drive: getVal('URL_Carpeta_Drive'),
+                            ID_Carpeta_Drive: getVal('ID_Carpeta_Drive')
                         });
                         setSearchStudent(getVal('Nombre_Estudiante'));
                         setSearchAsesor(getVal('Nombre_Asesor'));

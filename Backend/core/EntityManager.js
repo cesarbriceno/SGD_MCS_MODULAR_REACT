@@ -42,16 +42,33 @@ function createItem(type, data) {
             data.URL_Carpeta_Drive = folderInfo.url;
         }
 
+        const userEmail = Session.getActiveUser().getEmail() || 'Sistema';
         const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
         const newRow = headers.map(header => {
             if (data.hasOwnProperty(header)) return data[header];
             if (header === 'Fecha_Registro' || header === 'Ultima_Actualizacion') {
                 return Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "dd/MM/yyyy HH:mm:ss");
             }
+            if (header === 'Usuario_Registro' || header === 'Ultimo_Usuario') {
+                return userEmail;
+            }
             return '';
         });
 
         sheet.appendRow(newRow);
+
+        // Auditoría
+        logDocumentAction({
+            action: 'ENTITY_CREATE',
+            type: 'entity',
+            id: data[idField],
+            name: data.Nombre1 ? `${data.Nombre1} ${data.Apellido1}` : (data.Titulo_Investigacion || data.Nombre_Evento || data[idField]),
+            entityId: data[idField],
+            entityName: data.Nombre1 ? `${data.Nombre1} ${data.Apellido1}` : null,
+            entityType: type,
+            details: { context: 'Creación manual desde formulario' }
+        });
+
         return { success: true, message: 'Creado correctamente', id: data[idField] };
     } catch (e) {
         return { success: false, message: e.toString() };
@@ -94,15 +111,28 @@ function updateItem(type, id, data) {
                 if (header === 'Ultima_Actualizacion') {
                     val = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "dd/MM/yyyy HH:mm:ss");
                 }
+                if (header === 'Ultimo_Usuario') {
+                    val = Session.getActiveUser().getEmail() || 'Sistema';
+                }
                 sheet.getRange(rowIndex, colIndex + 1).setValue(val);
             }
         });
 
-        // Sinc Drive si no tiene ID_Carpeta_Drive
-        const folderCol = headers.indexOf('ID_Carpeta_Drive');
         if (folderCol > -1 && !values[rowIndex - 1][folderCol]) {
             syncEntityFolder(type, id);
         }
+
+        // Auditoría
+        logDocumentAction({
+            action: 'ENTITY_UPDATE',
+            type: 'entity',
+            id: id,
+            name: data.Nombre1 ? `${data.Nombre1} ${data.Apellido1}` : id,
+            entityId: id,
+            entityName: data.Nombre1 ? `${data.Nombre1} ${data.Apellido1}` : null,
+            entityType: type,
+            details: { context: 'Actualización de datos' }
+        });
 
         return { success: true, message: 'Actualizado correctamente' };
     } catch (e) {

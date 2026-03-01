@@ -38,6 +38,15 @@ function createSubfolder(parentFolderId, folderName) {
 
         const newFolder = parentFolder.createFolder(folderName);
 
+        // Registro de auditoría
+        logDocumentAction({
+            action: 'CREATE_FOLDER',
+            type: 'folder',
+            id: newFolder.getId(),
+            name: folderName,
+            details: { parentId: parentFolderId }
+        });
+
         return {
             success: true,
             id: newFolder.getId(),
@@ -59,7 +68,17 @@ function createSubfolder(parentFolderId, folderName) {
 function renameFolder(folderId, newName) {
     try {
         const folder = DriveApp.getFolderById(folderId);
+        const oldName = folder.getName();
         folder.setName(newName);
+
+        // Registro de auditoría
+        logDocumentAction({
+            action: 'RENAME_FOLDER',
+            type: 'folder',
+            id: folderId,
+            name: newName,
+            details: { oldName: oldName }
+        });
 
         return {
             success: true,
@@ -80,7 +99,17 @@ function renameFolder(folderId, newName) {
 function deleteFolder(folderId) {
     try {
         const folder = DriveApp.getFolderById(folderId);
+        const folderName = folder.getName();
         folder.setTrashed(true);
+
+        // Registro de auditoría
+        logDocumentAction({
+            action: 'DELETE_FOLDER',
+            type: 'folder',
+            id: folderId,
+            name: folderName,
+            details: { trashed: true }
+        });
 
         return {
             success: true,
@@ -148,6 +177,18 @@ function uploadFile(folderId, fileData) {
         // Crear archivo
         const file = folder.createFile(blob);
 
+        // Registro de auditoría
+        logDocumentAction({
+            action: 'UPLOAD_FILE',
+            type: 'file',
+            id: file.getId(),
+            name: file.getName(),
+            entityId: fileData.entityId,
+            entityName: fileData.entityName,
+            entityType: fileData.entityType,
+            details: { folderId: folderId, mimeType: contentType }
+        });
+
         return {
             success: true,
             id: file.getId(),
@@ -170,7 +211,17 @@ function uploadFile(folderId, fileData) {
 function deleteFile(fileId) {
     try {
         const file = DriveApp.getFileById(fileId);
+        const fileName = file.getName();
         file.setTrashed(true);
+
+        // Registro de auditoría
+        logDocumentAction({
+            action: 'DELETE_FILE',
+            type: 'file',
+            id: fileId,
+            name: fileName,
+            details: { trashed: true }
+        });
 
         return {
             success: true,
@@ -191,7 +242,17 @@ function deleteFile(fileId) {
 function renameFile(fileId, newName) {
     try {
         const file = DriveApp.getFileById(fileId);
+        const oldName = file.getName();
         file.setName(newName);
+
+        // Registro de auditoría
+        logDocumentAction({
+            action: 'RENAME_FILE',
+            type: 'file',
+            id: fileId,
+            name: newName,
+            details: { oldName: oldName }
+        });
 
         return {
             success: true,

@@ -141,6 +141,7 @@ const TeacherForm = () => {
                             Link_CvLAC: getVal('Link_CvLAC'),
                             Grupo_Investigacion: getVal('Grupo_Investigacion'),
                             Linea_Investigacion_Principal: getVal('Linea_Investigacion_Principal'),
+                            ID_Carpeta_Drive: getVal('ID_Carpeta_Drive'),
                             URL_Carpeta_Drive: getVal('URL_Carpeta_Drive')
                         });
                     }

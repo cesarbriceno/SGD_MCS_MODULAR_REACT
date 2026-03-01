@@ -99,7 +99,9 @@ const EventForm = () => {
                             Presupuesto: getVal('Presupuesto'),
                             Fuente_Financiacion: getVal('Fuente_Financiacion'),
                             Impacto_Academico: getVal('Impacto_Academico'),
-                            URL_Evidencias: getVal('URL_Evidencias')
+                            URL_Evidencias: getVal('URL_Evidencias'),
+                            URL_Carpeta_Drive: getVal('URL_Carpeta_Drive') || getVal('URL_Evidencias'),
+                            ID_Carpeta_Drive: getVal('ID_Carpeta_Drive')
                         });
                     }
                 } catch (error) { console.error(error); } finally { setLoading(false); }

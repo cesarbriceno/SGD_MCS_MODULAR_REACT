@@ -184,6 +184,18 @@ function syncEntityFolder(type, id) {
             if (folderIdCol > -1) sheet.getRange(rowIndex, folderIdCol + 1).setValue(folderId);
             if (folderUrlCol > -1) sheet.getRange(rowIndex, folderUrlCol + 1).setValue(folderUrl);
 
+            // Registro de auditoría
+            logDocumentAction({
+                action: 'SYNC_FOLDER',
+                type: 'folder',
+                id: folderId,
+                name: rowData.ID_Estudiante || rowData.ID_Docente || id,
+                entityId: id,
+                entityName: rowData.Nombre1 ? `${rowData.Nombre1} ${rowData.Apellido1}` : id,
+                entityType: type,
+                details: { message: "Carpeta creada/vinculada preventivamente" }
+            });
+
             return { success: true, id: folderId, url: folderUrl, message: "Carpeta creada y vinculada" };
         }
 
@@ -232,7 +244,17 @@ function deleteEntityFolder(folderId) {
     try {
         if (!folderId) return { success: false, message: "ID de carpeta no proporcionado" };
         const folder = DriveApp.getFolderById(folderId);
+        const folderName = folder.getName();
         folder.setTrashed(true);
+
+        // Registro de auditoría
+        logDocumentAction({
+            action: 'DELETE_ENTITY_FOLDER',
+            type: 'folder',
+            id: folderId,
+            name: folderName,
+            details: { trashed: true, context: "Eliminación de entidad" }
+        });
         return { success: true, message: "Carpeta movida a la papelera" };
     } catch (e) {
         Logger.log("Error en deleteEntityFolder: " + e.toString());

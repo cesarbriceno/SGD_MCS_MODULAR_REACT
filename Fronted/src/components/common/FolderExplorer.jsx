@@ -114,6 +114,9 @@ const FolderExplorer = ({ folderId, folderUrl, entityType, entityId, entityData,
                 {showUploader && (
                     <FileUploader
                         folderId={folderId}
+                        entityId={entityId}
+                        entityType={entityType}
+                        entityName={entityData ? `${entityData.Nombre1 || ''} ${entityData.Apellido1 || ''}`.trim() : ''}
                         onClose={() => setShowUploader(false)}
                         onUploadComplete={handleUploadComplete}
                     />

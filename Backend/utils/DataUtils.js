@@ -8,7 +8,7 @@
  */
 function getSimpleData(sheet) {
     if (!sheet) return [];
-    const data = sheet.getDataRange().getValues();
+    const data = sheet.getDataRange().getDisplayValues();
     if (data.length < 2) return [];
 
     const headers = data.shift().map(h =>

@@ -87,3 +87,42 @@ function normalizeData(type, data) {
 
     return data;
 }
+
+/**
+ * 4. LOG DE AUDITORÍA DOCUMENTAL
+ * Registra una acción en la hoja Historial_Documentos
+ * @param {Object} params - {action, type, id, name, details}
+ */
+function logDocumentAction(params) {
+    try {
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const sheet = ss.getSheetByName(SHEETS.HISTORIAL);
+        if (!sheet) return;
+
+        const userEmail = Session.getActiveUser().getEmail() || 'Sistema/Anónimo';
+        const uuid = Utilities.getUuid();
+        const timestamp = new Date();
+
+        // Estructura de la hoja (Reportada por el usuario): 
+        // UUID | Tipo_Documento | ID_Beneficiario | Nombre_Beneficiario | Detalle_Origen | Detalles_JSON | Fecha_Emision | Usuario_Emisor
+        sheet.appendRow([
+            uuid,
+            params.action,                        // UPLOAD_FILE, ENTITY_CREATE, etc. -> 'Tipo_Documento'
+            params.entityId || params.id,         // ID_Beneficiario
+            params.entityName || params.name,     // Nombre_Beneficiario
+            params.type || 'N/A',                 // Detalle_Origen
+            JSON.stringify({
+                itemId: params.id,
+                itemName: params.name,
+                entityType: params.entityType,
+                ...params.details
+            }),
+            timestamp,                             // Fecha_Emision
+            userEmail                              // Usuario_Emisor
+        ]);
+
+        Logger.log(`Audit Log: ${params.action} por ${userEmail} sobre ${params.name}`);
+    } catch (e) {
+        Logger.log('Error en logDocumentAction: ' + e.toString());
+    }
+}

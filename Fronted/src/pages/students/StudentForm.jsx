@@ -151,7 +151,8 @@ const StudentForm = () => {
                             Direccion: getVal('Direccion'), Barrio: getVal('Barrio'),
                             Ciudad: getVal('Ciudad'), Depto_Residencia: getVal('Depto_Residencia'),
                             Estrato: getVal('Estrato'),
-                            Cohorte_Ingreso: getVal('Cohorte_Ingreso'), Fecha_Ingreso: getDateVal('Fecha_Ingreso'),
+                            Cohorte_Ingreso: getVal('Cohorte_Ingreso'),
+                            Fecha_Ingreso: getDateVal('Fecha_Ingreso'),
                             Cohorte_Egreso: getVal('Cohorte_Egreso'), Estado: getVal('Estado') || 'Cursando',
                             Fecha_Egreso: getDateVal('Fecha_Egreso'), Fecha_Retiro: getDateVal('Fecha_Retiro'),
                             Fecha_Reingreso: getDateVal('Fecha_Reingreso'), Fecha_Pausa: getDateVal('Fecha_Pausa'),
@@ -160,7 +161,8 @@ const StudentForm = () => {
                             Cargo_Actual: getVal('Cargo_Actual'), Sector_Desempeno: getVal('Sector_Desempeno'),
                             Rango_Salarial: getVal('Rango_Salarial'), Telefono_Empresa: getVal('Telefono_Empresa'),
                             Comentarios: getVal('Comentarios'),
-                            URL_Carpeta_Drive: getVal('URL_Carpeta_Drive')
+                            URL_Carpeta_Drive: getVal('URL_Carpeta_Drive'),
+                            ID_Carpeta_Drive: getVal('ID_Carpeta_Drive')
                         });
                     }
                 } catch (error) { console.error(error); } finally { setLoading(false); }

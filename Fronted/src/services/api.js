@@ -182,6 +182,13 @@ const invalidateDriveCache = () => {
     driveCache.clear();
 };
 
+const invalidateEntityCache = (folderId) => {
+    if (folderId) {
+        driveCache.delete(`files_${folderId}`);
+        console.log(`[Cache] Invalidated files_${folderId}`);
+    }
+};
+
 
 export const api = {
     // Dashboard
@@ -247,7 +254,10 @@ export const api = {
         // Archivos - CRUD (Invalidan caché)
         uploadFile: async (folderId, fileData) => {
             const res = await runGoogleFunction('uploadFile', [folderId, fileData]);
-            if (res.success) invalidateDriveCache();
+            if (res.success) {
+                invalidateDriveCache();
+                invalidateEntityCache(folderId);
+            }
             return res;
         },
         deleteFile: async (fileId) => {

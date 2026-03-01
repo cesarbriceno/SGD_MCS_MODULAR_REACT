@@ -84,7 +84,9 @@ const ExternForm = () => {
                             Sexo: getVal('Sexo'), Email: getVal('Email'), Telefono: getVal('Telefono'),
                             Pais: getVal('Pais') || 'Colombia', Ciudad: getVal('Ciudad'),
                             Tipo_Origen: getVal('Tipo_Origen') || 'Nacional',
-                            Organizacion: getVal('Organizacion'), Cargo_Perfil: getVal('Cargo_Perfil')
+                            Organizacion: getVal('Organizacion'), Cargo_Perfil: getVal('Cargo_Perfil'),
+                            ID_Carpeta_Drive: getVal('ID_Carpeta_Drive'),
+                            URL_Carpeta_Drive: getVal('URL_Carpeta_Drive')
                         });
                     }
                 } catch (error) { console.error(error); } finally { setLoading(false); }
