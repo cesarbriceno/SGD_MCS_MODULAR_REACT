@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [react(), viteSingleFile()],
   root: '.', // La raíz es la carpeta actual (frontend)
   build: {
-    outDir: '../backend', // ¡MAGIA! Construye el archivo final directamente en la carpeta backend
+    outDir: '../backend/web', // ¡MAGIA! Construye el archivo final en la subcarpeta web
     emptyOutDir: false,   // No borres los scripts .gs que pondremos en backend
     target: 'esnext',
     assetsInlineLimit: 100000000, // Fuerza a que todo (imágenes, estilos) se incruste en el HTML
