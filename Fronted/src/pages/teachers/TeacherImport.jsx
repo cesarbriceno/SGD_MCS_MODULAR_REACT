@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
+import { generateId, findNextSequence } from '../../utils/idGenerator';
 
 const styles = `
   .glass-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 2rem; }
@@ -31,11 +32,11 @@ const TeacherImport = () => {
     const [importProgress, setImportProgress] = useState({ current: 0, total: 0, status: 'idle' });
     const [showOnlyErrors, setShowOnlyErrors] = useState(false);
 
-    const REQUIRED_FIELDS = ["Nombre1", "Apellido1", "Numero_Documento", "Email", "Nivel_Formacion", "Tipo_Vinculacion"];
+    const REQUIRED_FIELDS = ["Nombre1", "Apellido1", "Numero_Documento", "Email", "Nivel_Formacion", "Tipo_Vinculacion", "Fecha_Vinculacion"];
     const ALL_FIELDS = [
         "Numero_Documento", "Tipo_Documento", "Nombre1", "Nombre2", "Apellido1", "Apellido2",
         "Lugar_Expedicion", "Sexo", "Telefono", "Pais", "Ciudad", "Email",
-        "Nivel_Formacion", "Escalafon", "Dedicacion", "Tipo_Vinculacion", "Activo"
+        "Nivel_Formacion", "Escalafon", "Dedicacion", "Tipo_Vinculacion", "Fecha_Vinculacion", "Activo"
     ];
     const [existingTeachers, setExistingTeachers] = useState([]);
 
@@ -84,7 +85,7 @@ const TeacherImport = () => {
                 return {
                     ...row,
                     _isValid: true,
-                    ID_Docente: row.ID_Docente || `DOC-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+                    ID_Docente: row.ID_Docente || generateId('DOC'),
                     Fecha_Registro: now,
                     Ultima_Actualizacion: now,
                     Activo: row.Activo || 'Sí'
@@ -139,7 +140,8 @@ const TeacherImport = () => {
                     Numero_Documento: ['documento', 'cedula', 'identificacion', 'cc', 'doc', 'id', 'numero_documento', 'numero documento'],
                     Email: ['correo', 'mail', 'email', 'contacto', 'e-mail'],
                     Nivel_Formacion: ['formacion', 'nivel', 'nivel_formacion', 'postgrado', 'titulo obtenido'],
-                    Tipo_Vinculacion: ['vinculacion', 'contrato', 'tipo_vinculacion', 'dedicacion']
+                    Tipo_Vinculacion: ['vinculacion', 'contrato', 'tipo_vinculacion', 'dedicacion'],
+                    Fecha_Vinculacion: ['fecha vinculacion', 'fecha contrato', 'vinculacion fecha', 'fecha_vinculacion']
                 };
 
                 const mappedData = data.map(row => {
@@ -189,23 +191,33 @@ const TeacherImport = () => {
 
         setLoading(true);
         setImportProgress({ current: 0, total: validRows.length, status: 'importing' });
-        let successCount = 0;
+        let success = 0;
+
+        // Calculate initial sequence for the batch
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        const existingIds = existingTeachers.map(t => t.ID_Docente || t.id);
+        let nextSeq = findNextSequence('DOC', existingIds, year, month);
+
         for (let i = 0; i < validRows.length; i++) {
             const rawRecord = { ...validRows[i] };
 
-            // Data Cleaning: Only send known fields to avoid spreadsheet pollution
+            // Data Cleaning
             const record = {};
             ALL_FIELDS.forEach(f => { if (rawRecord[f] !== undefined) record[f] = rawRecord[f]; });
 
             // Include system-generated tags
-            ["ID_Docente", "Fecha_Registro", "Ultima_Actualizacion"].forEach(f => {
-                if (rawRecord[f]) record[f] = rawRecord[f];
-            });
+            const timestamp = now.toLocaleString();
+            record.ID_Docente = rawRecord.ID_Docente || generateId('DOC', { year, month, sequence: nextSeq++ });
+            record.Fecha_Registro = rawRecord.Fecha_Registro || timestamp;
+            record.Ultima_Actualizacion = rawRecord.Ultima_Actualizacion || timestamp;
+            record.Fecha_Vinculacion = rawRecord.Fecha_Vinculacion || timestamp;
 
-            try { await api.teachers.create(record); successCount++; } catch (e) { }
+            try { await api.teachers.create(record); success++; } catch (e) { }
             setImportProgress(prev => ({ ...prev, current: i + 1 }));
         }
-        toast.success("Éxito", `${successCount} docentes importados correctamente.`);
+        toast.success("Éxito", `${success} docentes importados correctamente.`);
         navigate('/teachers');
     };
 

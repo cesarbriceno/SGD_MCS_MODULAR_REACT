@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
+import { generateId, findNextSequence } from '../../utils/idGenerator';
 
 const styles = `
   .glass-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 2rem; }
@@ -31,11 +32,11 @@ const ExternImport = () => {
     const [importProgress, setImportProgress] = useState({ current: 0, total: 0, status: 'idle' });
     const [showOnlyErrors, setShowOnlyErrors] = useState(false);
 
-    const REQUIRED_FIELDS = ["Nombre1", "Apellido1", "Numero_Documento", "Email", "Organizacion", "Cargo_Perfil"];
+    const REQUIRED_FIELDS = ["Nombre1", "Apellido1", "Numero_Documento", "Email", "Organizacion", "Cargo_Perfil", "Fecha_Ingreso"];
     const ALL_FIELDS = [
         "Numero_Documento", "Tipo_Documento", "Nombre1", "Nombre2", "Apellido1", "Apellido2",
         "Lugar_Expedicion", "Sexo", "Telefono", "Pais", "Ciudad", "Email",
-        "Organizacion", "Cargo_Perfil", "Tipo_Origen"
+        "Organizacion", "Cargo_Perfil", "Tipo_Origen", "Fecha_Ingreso"
     ];
     const [existingExterns, setExistingExterns] = useState([]);
 
@@ -83,7 +84,7 @@ const ExternImport = () => {
                 return {
                     ...row,
                     _isValid: true,
-                    ID_Externo: row.ID_Externo || `EXT-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+                    ID_Externo: row.ID_Externo || generateId('EXT'),
                     Fecha_Registro: now,
                     Ultima_Actualizacion: now
                 };
@@ -137,7 +138,8 @@ const ExternImport = () => {
                     Numero_Documento: ['documento', 'cedula', 'identificacion', 'cc', 'doc', 'id', 'numero_documento', 'numero documento'],
                     Email: ['correo', 'mail', 'email', 'contacto', 'e-mail'],
                     Organizacion: ['empresa', 'organizacion', 'entidad', 'compania', 'institucion'],
-                    Cargo_Perfil: ['cargo', 'perfil', 'puesto', 'cargo_perfil', 'labor']
+                    Cargo_Perfil: ['cargo', 'perfil', 'puesto', 'cargo_perfil', 'labor'],
+                    Fecha_Ingreso: ['fecha ingreso', 'fecha registro', 'ingreso fecha', 'fecha_ingreso']
                 };
 
                 const mappedData = data.map(row => {
@@ -187,7 +189,14 @@ const ExternImport = () => {
 
         setLoading(true);
         setImportProgress({ current: 0, total: validRows.length, status: 'importing' });
-        let success = 0;
+        let successCount = 0;
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        const existingIds = existingExterns.map(e => e.ID_Externo || e.id);
+        let nextSeq = findNextSequence('EXT', existingIds, year, month);
+
         for (let i = 0; i < validRows.length; i++) {
             const rawRecord = { ...validRows[i] };
 
@@ -196,15 +205,16 @@ const ExternImport = () => {
             ALL_FIELDS.forEach(f => { if (rawRecord[f] !== undefined) record[f] = rawRecord[f]; });
 
             // Include system-generated tags
-            const now = new Date().toLocaleString();
-            record.ID_Externo = rawRecord.ID_Externo || `EXT-IMP-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-            record.Fecha_Registro = rawRecord.Fecha_Registro || now;
-            record.Ultima_Actualizacion = rawRecord.Ultima_Actualizacion || now;
+            const timestamp = now.toLocaleString();
+            record.ID_Externo = rawRecord.ID_Externo || generateId('EXT', { year, month, sequence: nextSeq++ });
+            record.Fecha_Registro = rawRecord.Fecha_Registro || timestamp;
+            record.Ultima_Actualizacion = rawRecord.Ultima_Actualizacion || timestamp;
+            record.Fecha_Ingreso = rawRecord.Fecha_Ingreso || timestamp;
 
-            try { await api.externals.create(record); success++; } catch (e) { }
+            try { await api.externals.create(record); successCount++; } catch (e) { }
             setImportProgress(prev => ({ ...prev, current: i + 1 }));
         }
-        toast.success("Importación exitosa", `${success} colaboradores externos registrados.`);
+        toast.success("Importación exitosa", `${successCount} colaboradores externos registrados.`);
         navigate('/externals');
     };
 

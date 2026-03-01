@@ -8,6 +8,7 @@ import {
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
+import { generateId, findNextSequence } from '../../utils/idGenerator';
 import CustomSelect from '../../components/common/CustomSelect';
 import FolderExplorer from '../../components/common/FolderExplorer';
 
@@ -54,6 +55,7 @@ const ThesisForm = () => {
         URL_Documento: '',
         URL_Carpeta_Drive: ''
     });
+    const [createFolder, setCreateFolder] = useState(true);
     const [searchCodirector, setSearchCodirector] = useState('');
     const [showCodirectorResults, setShowCodirectorResults] = useState(false);
 
@@ -157,7 +159,32 @@ const ThesisForm = () => {
 
         setLoading(true);
         try {
-            const res = isEdit ? await api.thesis.update(id, formData) : await api.thesis.create({ ...formData, ID_Tesis: `TES-${Date.now()}` });
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const timestamp = now.toISOString();
+
+            let finalId = id;
+            if (!isEdit) {
+                const existingThesis = await api.thesis.list();
+                const ids = existingThesis.map(t => t.ID_Tesis || t.id);
+                const nextSeq = findNextSequence('TES', ids, year, month);
+                finalId = generateId('TES', { year, month, sequence: nextSeq });
+            }
+
+            const dataToSave = {
+                ...formData,
+                ID_Tesis: finalId,
+                Ultima_Actualizacion: timestamp
+            };
+            if (!isEdit) {
+                dataToSave.Fecha_Registro = timestamp;
+                dataToSave._createFolder = createFolder;
+            } else if (!formData.URL_Carpeta_Drive && createFolder) {
+                dataToSave._createFolder = true;
+            }
+
+            const res = isEdit ? await api.thesis.update(id, dataToSave) : await api.thesis.create(dataToSave);
             if (res.success || res.id) {
                 toast.success('Guardado', 'Investigación registrada correctamente.');
                 navigate('/thesis');
@@ -247,6 +274,24 @@ const ThesisForm = () => {
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Resumen (Abstract)</label>
                                 <textarea value={formData.Resumen} onChange={e => setFormData(p => ({ ...p, Resumen: e.target.value }))} disabled={isView} className="w-full premium-input px-4 h-40 resize-none font-medium text-sm leading-relaxed" placeholder="Breve descripción del trabajo..." />
                             </div>
+
+                            {!formData.URL_Carpeta_Drive && (
+                                <div className="mt-6 p-5 rounded-[1.5rem] bg-purple-50/50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-500/20 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-purple-600 text-white rounded-2xl shadow-lg shadow-purple-600/20">
+                                            <FolderOpen size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest">Repositorio en Drive</p>
+                                            <p className="text-[10px] text-slate-500 font-medium tracking-tight">Vincular carpeta automáticamente al guardar</p>
+                                        </div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={createFolder} onChange={(e) => setCreateFolder(e.target.checked)} className="sr-only peer" disabled={isView || loading} />
+                                        <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                                    </label>
+                                </div>
+                            )}
                         </section>
 
                         <section className="glass-card p-8 space-y-6">

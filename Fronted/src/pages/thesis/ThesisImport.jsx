@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
+import { generateId, findNextSequence } from '../../utils/idGenerator';
 
 const styles = `
   .glass-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 2rem; }
@@ -199,23 +200,39 @@ const ThesisImport = () => {
 
         setLoading(true);
         setImportProgress({ current: 0, total: validRows.length, status: 'importing' });
-        let success = 0;
+        let successCount = 0;
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+
+        // Fetch existing data for sequence calculation
+        let existingStudents = [];
+        let existingAdvisors = [];
+        let existingThesis = [];
+        try {
+            existingStudents = await api.students.list();
+            existingAdvisors = await api.teachers.list();
+            existingThesis = await api.thesis.list();
+        } catch (e) { console.error("Error fetching data for sequences", e); }
+
+        let nextThesisSeq = findNextSequence('TES', existingThesis.map(t => t.ID_Tesis || t.id), year, month);
+        let nextStudentSeq = findNextSequence('EST', existingStudents.map(s => s.ID_Estudiante || s.id), year, month);
+        let nextAdvisorSeq = findNextSequence('DOC', existingAdvisors.map(d => d.ID_Docente || d.id), year, month);
 
         for (let i = 0; i < validRows.length; i++) {
             const row = { ...validRows[i] };
-            const now = new Date().toLocaleString();
-
+            const timestamp = now.toLocaleString();
             try {
                 // 1. CASCADING CREATION: STUDENT
                 let finalStudentId = row.ID_Estudiante;
                 if (row._needsStudent) {
                     const studentData = {
-                        ID_Estudiante: `EST-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+                        ID_Estudiante: generateId('EST', { year, month, sequence: nextStudentSeq++ }),
                         Nombre1: row.Nombre_Estudiante || row.Nombre1_Estudiante,
                         Apellido1: row.Apellido_Estudiante || row.Apellido1_Estudiante || '-',
                         Cedula: row.Cedula_Estudiante || row.Documento_Estudiante,
                         Email: row.Email_Estudiante || `temp_${Date.now()}@example.com`,
-                        Fecha_Registro: now,
                         Ultima_Actualizacion: now,
                         Estado: 'Cursando'
                     };
@@ -229,7 +246,7 @@ const ThesisImport = () => {
                 let finalAdvisorId = row.ID_Asesor;
                 if (row._needsAdvisor) {
                     const advisorData = {
-                        ID_Docente: `DOC-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+                        ID_Docente: generateId('DOC', { year, month, sequence: nextAdvisorSeq++ }),
                         Nombre1: row.Nombre_Asesor || row.Nombre1_Asesor,
                         Apellido1: row.Apellido_Asesor || row.Apellido1_Asesor || '-',
                         Cedula: row.Cedula_Asesor || row.Documento_Asesor,
@@ -250,9 +267,10 @@ const ThesisImport = () => {
 
                 thesisData.ID_Estudiante = finalStudentId;
                 thesisData.ID_Asesor = finalAdvisorId;
-                thesisData.ID_Tesis = row.ID_Tesis || `TES-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-                thesisData.Fecha_Registro = row.Fecha_Registro || now;
-                thesisData.Ultima_Actualizacion = row.Ultima_Actualizacion || now;
+                thesisData.ID_Tesis = row.ID_Tesis || generateId('TES', { year, month, sequence: nextThesisSeq++ });
+                const timestamp = now.toLocaleString();
+                thesisData.Fecha_Registro = row.Fecha_Registro || timestamp;
+                thesisData.Ultima_Actualizacion = row.Ultima_Actualizacion || timestamp;
 
                 await api.thesis.create(thesisData);
                 success++;

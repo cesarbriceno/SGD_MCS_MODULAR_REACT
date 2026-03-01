@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
+import { generateId, findNextSequence } from '../../utils/idGenerator';
 
 const styles = `
   .glass-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 2rem; }
@@ -31,11 +32,11 @@ const StudentImport = () => {
     const [importProgress, setImportProgress] = useState({ current: 0, total: 0, status: 'idle' });
     const [showOnlyErrors, setShowOnlyErrors] = useState(false);
 
-    const REQUIRED_FIELDS = ["Nombre1", "Apellido1", "Numero_Documento", "Email", "Cohorte_Ingreso"];
+    const REQUIRED_FIELDS = ["Nombre1", "Apellido1", "Numero_Documento", "Email", "Cohorte_Ingreso", "Fecha_Ingreso"];
     const ALL_FIELDS = [
         "Numero_Documento", "Tipo_Documento", "Nombre1", "Nombre2", "Apellido1", "Apellido2",
         "Lugar_Expedicion", "Fecha_Nacimiento", "Sexo", "Email", "Telefono", "Pais",
-        "Ciudad", "Cohorte_Ingreso", "Estado"
+        "Ciudad", "Cohorte_Ingreso", "Fecha_Ingreso", "Estado"
     ];
     const [existingStudents, setExistingStudents] = useState([]);
 
@@ -84,7 +85,7 @@ const StudentImport = () => {
                 return {
                     ...row,
                     _isValid: true,
-                    ID_Estudiante: row.ID_Estudiante || `EST-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+                    ID_Estudiante: row.ID_Estudiante || generateId('EST', row.Cohorte_Ingreso),
                     Fecha_Registro: now,
                     Ultima_Actualizacion: now,
                     Estado: row.Estado || 'Cursando'
@@ -138,7 +139,8 @@ const StudentImport = () => {
                     Apellido1: ['apellido', 'apellidos', 'primer apellido', 'apellido1', 'last name', 'surname'],
                     Numero_Documento: ['documento', 'cedula', 'identificacion', 'cc', 'doc', 'id', 'numero_documento', 'numero documento'],
                     Email: ['correo', 'mail', 'email', 'contacto', 'e-mail'],
-                    Cohorte_Ingreso: ['cohorte', 'ingreso', 'año ingreso', 'cohorte_ingreso']
+                    Cohorte_Ingreso: ['cohorte', 'ingreso', 'año ingreso', 'cohorte_ingreso'],
+                    Fecha_Ingreso: ['fecha ingreso', 'ingreso fecha', 'fecha de ingreso', 'fecha_ingreso']
                 };
 
                 const mappedData = data.map(row => {
@@ -189,17 +191,27 @@ const StudentImport = () => {
         setLoading(true);
         setImportProgress({ current: 0, total: validRows.length, status: 'importing' });
         let success = 0;
+
+        // Calculate initial sequence for the batch
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        const existingIds = existingStudents.map(s => s.ID_Estudiante || s.id);
+        let nextSeq = findNextSequence('EST', existingIds, year, month);
+
         for (let i = 0; i < validRows.length; i++) {
             const rawRecord = { ...validRows[i] };
 
-            // Data Cleaning: Only send known fields to avoid spreadsheet pollution
+            // Data Cleaning
             const record = {};
             ALL_FIELDS.forEach(f => { if (rawRecord[f] !== undefined) record[f] = rawRecord[f]; });
 
             // Include system-generated tags
-            ["ID_Estudiante", "Fecha_Registro", "Ultima_Actualizacion"].forEach(f => {
-                if (rawRecord[f]) record[f] = rawRecord[f];
-            });
+            const timestamp = now.toLocaleString();
+            record.ID_Estudiante = rawRecord.ID_Estudiante || generateId('EST', { year, month, sequence: nextSeq++ });
+            record.Fecha_Registro = rawRecord.Fecha_Registro || timestamp;
+            record.Ultima_Actualizacion = rawRecord.Ultima_Actualizacion || timestamp;
+            record.Fecha_Ingreso = rawRecord.Fecha_Ingreso || timestamp;
 
             try { await api.students.create(record); success++; } catch (e) { }
             setImportProgress(prev => ({ ...prev, current: i + 1 }));

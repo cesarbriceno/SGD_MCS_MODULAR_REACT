@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
-import GlobalBackground from '../ui/GlobalBackground';
+import GlobalBackground from '../common/GlobalBackground';
 
 const MainLayout = ({ darkMode, setDarkMode }) => {
     // CAMBIO: Por defecto inicia en false para que no esté expandido al cargar

@@ -8,6 +8,7 @@ import {
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
+import { generateId, findNextSequence } from '../../utils/idGenerator';
 import CustomSelect from '../../components/common/CustomSelect';
 import { RefreshCw, ExternalLink, FolderOpen } from 'lucide-react';
 
@@ -58,8 +59,10 @@ const ExternForm = () => {
         Tipo_Documento: 'CC', Numero_Documento: '', Lugar_Expedicion: '',
         Sexo: '', Email: '', Telefono: '',
         Pais: 'Colombia', Ciudad: '',
-        Tipo_Origen: 'Nacional', Organizacion: '', Cargo_Perfil: ''
+        Tipo_Origen: 'Nacional', Organizacion: '', Cargo_Perfil: '',
+        URL_Carpeta_Drive: ''
     });
+    const [createFolder, setCreateFolder] = useState(true);
 
     const [errors, setErrors] = useState({});
 
@@ -113,9 +116,34 @@ const ExternForm = () => {
 
         setLoading(true);
         try {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const timestamp = now.toISOString();
+
+            let finalId = id;
+            if (!isEdit) {
+                const existingExterns = await api.externals.list();
+                const ids = existingExterns.map(e => e.ID_Externo || e.id);
+                const nextSeq = findNextSequence('EXT', ids, year, month);
+                finalId = generateId('EXT', { year, month, sequence: nextSeq });
+            }
+
+            const dataToSave = {
+                ...formData,
+                ID_Externo: finalId,
+                Ultima_Actualizacion: timestamp
+            };
+            if (!isEdit) {
+                dataToSave.Fecha_Registro = timestamp;
+                dataToSave._createFolder = createFolder;
+            } else if (!formData.URL_Carpeta_Drive && createFolder) {
+                dataToSave._createFolder = true;
+            }
+
             const response = isEdit
-                ? await api.externals.update(id, formData)
-                : await api.externals.create({ ...formData, ID_Externo: `EXT-${Date.now()}` });
+                ? await api.externals.update(id, dataToSave)
+                : await api.externals.create(dataToSave);
 
             if (response.success || response.id) {
                 addNotification(isEdit ? 'Registro actualizado' : 'Nuevo registro', 'El colaborador externo ha sido guardado.', 'success');
@@ -152,6 +180,24 @@ const ExternForm = () => {
                     <InputGroup label="Número Doc." name="Numero_Documento" required value={formData.Numero_Documento} onChange={handleChange} disabled={isDisabled} error={errors.Numero_Documento} icon={Hash} />
                     <InputGroup label="Lugar Expedición" name="Lugar_Expedicion" value={formData.Lugar_Expedicion} onChange={handleChange} disabled={isDisabled} icon={MapPin} />
                     <InputGroup label="Sexo" name="Sexo" options={['Masculino', 'Femenino', 'Otro']} value={formData.Sexo} onChange={handleChange} disabled={isDisabled} icon={User} />
+
+                    {!formData.URL_Carpeta_Drive && (
+                        <div className="col-span-full mt-4 p-4 rounded-2xl bg-green-50/50 dark:bg-white/5 border border-green-100 dark:border-white/5 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-green-500 text-white rounded-xl">
+                                    <FolderOpen size={18} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Carpeta de Drive</p>
+                                    <p className="text-[10px] text-slate-500 font-medium">Generar espacio digital automáticamente</p>
+                                </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" checked={createFolder} onChange={(e) => setCreateFolder(e.target.checked)} className="sr-only peer" disabled={isDisabled} />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                            </label>
+                        </div>
+                    )}
                 </GlassSection>
 
                 <GlassSection title="Contacto y Ubicación" icon={Globe} color="blue" zIndex={20}>

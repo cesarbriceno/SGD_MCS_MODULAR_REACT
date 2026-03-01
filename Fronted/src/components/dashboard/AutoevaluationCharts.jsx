@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList, PieChart, Pie } from 'recharts';
 import { Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -39,19 +39,21 @@ export const ChartContainer = ({ title, children, downloadId }) => {
 };
 
 // 1. COHORTES: Evolución de Ingresos vs Graduados
-export const CohortsEvolutionChart = ({ data = [], darkMode }) => {
-    // Procesar datos para agrupar por cohorte
-    const processedData = data.reduce((acc, curr) => {
-        const cohorte = curr.cohorte || 'Sin Cohorte';
-        if (!acc[cohorte]) {
-            acc[cohorte] = { name: cohorte, Ingresos: 0, Graduados: 0 };
-        }
-        acc[cohorte].Ingresos += 1;
-        if (curr.estado === 'Graduado') acc[cohorte].Graduados += 1;
-        return acc;
-    }, {});
+export const CohortEvolutionChart = ({ data = [], darkMode }) => {
+    // Procesar datos para agrupar por cohorte memorizado
+    const chartData = useMemo(() => {
+        const processed = data.reduce((acc, curr) => {
+            const cohorte = curr.cohorte || 'Sin Cohorte';
+            if (!acc[cohorte]) {
+                acc[cohorte] = { name: cohorte, Ingresos: 0, Graduados: 0 };
+            }
+            acc[cohorte].Ingresos += 1;
+            if (curr.estado === 'Graduado') acc[cohorte].Graduados += 1;
+            return acc;
+        }, {});
 
-    const chartData = Object.values(processedData).sort((a, b) => a.name.localeCompare(b.name));
+        return Object.values(processed).sort((a, b) => a.name.localeCompare(b.name));
+    }, [data]);
 
     return (
         <ChartContainer title="Evolución por Cohortes" downloadId="cohortes_evolucion">
@@ -76,22 +78,24 @@ export const CohortsEvolutionChart = ({ data = [], darkMode }) => {
 
 // 2. INVESTIGACIÓN: Líneas (Tesis + Docentes)
 export const ResearchLinesChart = ({ tesis = [], docentes = [], darkMode }) => {
-    // Unificar líneas de investigación
-    const lines = {};
+    // Unificar líneas de investigación memorizado
+    const chartData = useMemo(() => {
+        const lines = {};
 
-    tesis.forEach(t => {
-        const linea = t.linea || 'Sin definir';
-        if (!lines[linea]) lines[linea] = { name: linea, Tesis: 0, Docentes: 0 };
-        lines[linea].Tesis += 1;
-    });
+        tesis.forEach(t => {
+            const linea = t.linea || 'Sin definir';
+            if (!lines[linea]) lines[linea] = { name: linea, Tesis: 0, Docentes: 0 };
+            lines[linea].Tesis += 1;
+        });
 
-    docentes.forEach(d => {
-        const linea = d.linea || 'Sin definir';
-        if (!lines[linea]) lines[linea] = { name: linea, Tesis: 0, Docentes: 0 };
-        lines[linea].Docentes += 1;
-    });
+        docentes.forEach(d => {
+            const linea = d.linea || 'Sin definir';
+            if (!lines[linea]) lines[linea] = { name: linea, Tesis: 0, Docentes: 0 };
+            lines[linea].Docentes += 1;
+        });
 
-    const chartData = Object.values(lines).filter(l => l.name !== 'Sin definir'); // Opcional filtrar
+        return Object.values(lines).filter(l => l.name !== 'Sin definir');
+    }, [tesis, docentes]);
 
     return (
         <ChartContainer title="Líneas de Investigación" downloadId="lineas_investigacion">
@@ -114,17 +118,19 @@ export const ResearchLinesChart = ({ tesis = [], docentes = [], darkMode }) => {
 
 // 3. EMPLEABILIDAD: Situación Laboral
 export const GraduateEmploymentChart = ({ data = [], darkMode }) => {
-    const processedData = data.reduce((acc, curr) => {
-        // Solo egresados y graduados
-        if (curr.estado === 'Egresado' || curr.estado === 'Graduado') {
-            const status = curr.situacion_laboral || 'No Registrado';
-            if (!acc[status]) acc[status] = { name: status, value: 0 };
-            acc[status].value += 1;
-        }
-        return acc;
-    }, {});
+    const chartData = useMemo(() => {
+        const processed = data.reduce((acc, curr) => {
+            // Solo egresados y graduados
+            if (curr.estado === 'Egresado' || curr.estado === 'Graduado') {
+                const status = curr.situacion_laboral || 'No Registrado';
+                if (!acc[status]) acc[status] = { name: status, value: 0 };
+                acc[status].value += 1;
+            }
+            return acc;
+        }, {});
 
-    const chartData = Object.values(processedData);
+        return Object.values(processed);
+    }, [data]);
 
     return (
         <ChartContainer title="Situación Laboral (Egresados)" downloadId="empleabilidad">

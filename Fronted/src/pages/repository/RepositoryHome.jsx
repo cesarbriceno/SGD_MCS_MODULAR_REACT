@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Home, RefreshCw, Upload, Search,
     Grid, List as ListIcon, Plus, ChevronRight,
-    FolderOpen, Filter
+    FolderOpen, Filter, X, Trash2
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
@@ -156,6 +156,37 @@ const RepositoryHome = () => {
         }
     };
 
+    const handleBulkDelete = async () => {
+        if (!selectedItems.length) return;
+
+        if (!await toast.confirm(
+            'Eliminar selección',
+            `¿Estás seguro de eliminar los ${selectedItems.length} elementos seleccionados? Esta acción los moverá a la papelera.`
+        )) return;
+
+        setLoading(true);
+        try {
+            let successCount = 0;
+            for (const id of selectedItems) {
+                const isFolder = folders.find(f => f.id === id);
+                const res = isFolder
+                    ? await api.drive.deleteFolder(id)
+                    : await api.drive.deleteFile(id);
+
+                if (res.success) successCount++;
+            }
+
+            toast.success('Completado', `Se eliminaron ${successCount} elementos correctamente`);
+            loadFolderContents(currentFolder.id);
+            setSelectedItems([]);
+        } catch (error) {
+            console.error('Bulk delete error:', error);
+            toast.error('Error', 'Ocurrió un error al procesar la eliminación masiva');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleRefresh = () => {
         if (currentFolder) {
             loadFolderContents(currentFolder.id);
@@ -199,7 +230,7 @@ const RepositoryHome = () => {
             </div>
 
             {/* Navigation & Toolbar */}
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-2 shadow-sm sticky top-4 z-30">
+            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-2 shadow-sm sticky top-4 z-20">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
 
                     {/* Breadcrumbs Scrollable */}
@@ -230,17 +261,33 @@ const RepositoryHome = () => {
                     <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 hidden md:block" />
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 px-2">
-                        <div className="relative group">
+                    <div className="flex items-center gap-2 px-2 w-full md:w-auto">
+                        <div className="relative flex-1 md:flex-initial">
                             <input
                                 type="text"
-                                placeholder="Buscar..."
+                                placeholder="Buscar en esta carpeta..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="w-32 focus:w-48 transition-all bg-slate-100 dark:bg-slate-800 border-none rounded-xl py-1.5 pl-9 pr-3 text-sm focus:ring-2 focus:ring-indigo-500"
+                                className="w-full md:w-64 lg:w-80 bg-slate-100 dark:bg-slate-800 border-none rounded-xl py-2 pl-10 pr-10 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
                             />
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <button
+                                onClick={handleSearch}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                            >
+                                <Search size={16} />
+                            </button>
+                            {searchQuery && (
+                                <button
+                                    onClick={() => {
+                                        setSearchQuery('');
+                                        handleRefresh();
+                                    }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-red-500 transition-colors"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
 
                         <button onClick={handleCreateFolder} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-indigo-600 transition-colors" title="Nueva Carpeta">
@@ -250,6 +297,21 @@ const RepositoryHome = () => {
                         <button onClick={handleRefresh} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-indigo-600 transition-colors" title="Actualizar">
                             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                         </button>
+
+                        {selectedItems.length > 0 && (
+                            <div className="flex items-center gap-2 animate-in slide-in-from-right-4">
+                                <span className="text-[10px] font-black bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-lg uppercase tracking-wider">
+                                    {selectedItems.length} seleccionados
+                                </span>
+                                <button
+                                    onClick={handleBulkDelete}
+                                    className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                                    title="Eliminar Selección"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
+                        )}
 
                         <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-1 flex">
                             <button

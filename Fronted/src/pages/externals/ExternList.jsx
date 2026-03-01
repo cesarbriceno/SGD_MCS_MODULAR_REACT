@@ -238,8 +238,8 @@ const ExternList = () => {
                                         <div className="bg-green-100 p-1.5 rounded-lg text-green-600"><User size={16} /></div>
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.origen}</span>
                                     </div>
-                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase ${item.origen === 'Internacional' ? 'bg-purple-500/10 text-purple-700 border-purple-200' : 'bg-blue-500/10 text-blue-700 border-blue-200'}`}>
-                                        {item.id.includes('EXT') ? item.id : 'REG'}
+                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase bg-blue-500/10 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                                        {item.id}
                                     </span>
                                 </div>
                                 <div>

@@ -9,6 +9,7 @@ import {
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
+import { generateId, findNextSequence } from '../../utils/idGenerator';
 import DocumentArchive from '../documents/DocumentArchive';
 import CustomSelect from '../../components/common/CustomSelect';
 import FolderExplorer from '../../components/common/FolderExplorer';
@@ -120,6 +121,7 @@ const StudentForm = () => {
         URL_Carpeta_Drive: ''
     });
 
+    const [createFolder, setCreateFolder] = useState(true);
     const [errors, setErrors] = useState({});
 
     // CARGA DE DATOS
@@ -207,10 +209,24 @@ const StudentForm = () => {
         setLoading(true);
         try {
             const cleanData = Object.fromEntries(Object.entries(formData).filter(([_, v]) => v !== null));
-            const timestamp = new Date().toISOString();
+            const now = new Date();
+            const timestamp = now.toISOString();
+
+            let finalId = id;
+            if (!isEdit) {
+                const existingStudents = await api.students.list();
+                const ids = existingStudents.map(s => s.ID_Estudiante || s.id);
+                const nextSeq = findNextSequence('EST', ids, now.getFullYear(), now.getMonth() + 1);
+                finalId = generateId('EST', {
+                    year: now.getFullYear(),
+                    month: now.getMonth() + 1,
+                    sequence: nextSeq
+                });
+            }
+
             const response = isEdit
-                ? await api.students.update(id, { ...cleanData, Ultima_Actualizacion: timestamp })
-                : await api.students.create({ ...cleanData, ID_Estudiante: `EST-${Date.now()}`, Fecha_Registro: timestamp, Ultima_Actualizacion: timestamp });
+                ? await api.students.update(id, { ...cleanData, Ultima_Actualizacion: timestamp, _createFolder: !formData.URL_Carpeta_Drive && createFolder })
+                : await api.students.create({ ...cleanData, ID_Estudiante: finalId, Fecha_Registro: timestamp, Ultima_Actualizacion: timestamp, _createFolder: createFolder });
 
             if (response.success || response.id) {
                 addNotification(
@@ -300,6 +316,23 @@ const StudentForm = () => {
                         <InputGroup label="F. Expedición" name="Fecha_Expedicion" type="date" value={formData.Fecha_Expedicion} onChange={handleChange} disabled={isDisabled} icon={Calendar} />
                         <InputGroup label="Lugar Exp." name="Lugar_Expedicion" value={formData.Lugar_Expedicion} onChange={handleChange} disabled={isDisabled} placeholder="Ej: Bogotá" icon={MapPin} />
                         <InputGroup label="Sexo" name="Sexo" options={['Masculino', 'Femenino', 'Otro']} value={formData.Sexo} onChange={handleChange} disabled={isDisabled} icon={User} />
+                        {!formData.URL_Carpeta_Drive && (
+                            <div className="col-span-full mt-4 p-4 rounded-3xl bg-indigo-50/50 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/20 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-500 text-white rounded-xl">
+                                        <FolderOpen size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Carpeta de Drive</p>
+                                        <p className="text-[10px] text-slate-500 font-medium">Generar espacio digital automáticamente</p>
+                                    </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={createFolder} onChange={(e) => setCreateFolder(e.target.checked)} className="sr-only peer" disabled={isDisabled} />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+                        )}
                         <InputGroup label="Estado Civil" name="Estado_Civil" options={['Soltero/a', 'Casado/a', 'Unión Libre', 'Divorciado/a']} value={formData.Estado_Civil} onChange={handleChange} disabled={isDisabled} icon={User} />
                         <InputGroup label="Fecha Nacimiento" name="Fecha_Nacimiento" type="date" value={formData.Fecha_Nacimiento} onChange={handleChange} disabled={isDisabled} icon={Calendar} />
                         <InputGroup label="Lugar Nacimiento" name="Lugar_Nacimiento" value={formData.Lugar_Nacimiento} onChange={handleChange} disabled={isDisabled} placeholder="Ej: Medellín" icon={MapPin} />

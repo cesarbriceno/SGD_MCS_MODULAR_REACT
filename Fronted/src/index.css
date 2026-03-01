@@ -14,7 +14,27 @@
 
 @layer components {
   .glass-panel {
-    @apply bg-white/70 dark:bg-surface-dark/60 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-glass;
+    @apply bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-glass;
+  }
+
+  .glass-row {
+    @apply bg-white/45 dark:bg-slate-800/40 backdrop-blur-md border-b border-black/5 dark:border-white/5 transition-all duration-200;
+  }
+
+  .glass-row:hover {
+    @apply scale-[1.005] -translate-y-[1px] bg-white/95 dark:bg-slate-800/95 shadow-xl z-10 rounded-xl;
+  }
+
+  .apple-search {
+    @apply bg-black/5 dark:bg-black/40 border border-transparent transition-all duration-300 outline-none;
+  }
+
+  .apple-search:focus-within {
+    @apply bg-white/90 dark:bg-slate-900/90 border-primary/50 ring-4 ring-primary/10;
+  }
+
+  .glass-dropdown-menu {
+    @apply bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl;
   }
 
   .card-premium {
@@ -28,4 +48,28 @@
   .btn-primary {
     @apply rounded-xl bg-gradient-to-r from-primary to-primary-hover px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:scale-[1.02] active:scale-95;
   }
+}
+
+/* Fixes Globales */
+.swal2-icon.swal2-success .swal2-success-circular-line-left,
+.swal2-icon.swal2-success .swal2-success-circular-line-right,
+.swal2-icon.swal2-success .swal2-success-fix {
+  background-color: transparent !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-600;
 }

@@ -75,21 +75,28 @@ const runGoogleFunction = (functionName, args = []) => {
                         break;
                     case 'deleteFile':
                     case 'deleteFolder':
-                        resolve({ success: true, message: 'Eliminado (DEV)' });
+                        resolve({ success: true, message: 'Elemento movido a la papelera (DEV)' });
                         break;
                     case 'renameFile':
                     case 'renameFolder':
-                        resolve({ success: true, message: 'Renombrado (DEV)', newName: args[1] });
+                        resolve({ success: true, message: 'Renombrado correctamente (DEV)', newName: args[1] });
                         break;
                     case 'moveFile':
                     case 'moveFolder':
-                        resolve({ success: true, message: 'Movido (DEV)' });
+                        resolve({ success: true, message: 'Movido exitosamente (DEV)' });
                         break;
                     case 'createSubfolder':
-                        resolve({ success: true, id: 'folder-mock-id', url: '#', message: 'Carpeta creada (DEV)' });
+                        resolve({ success: true, id: 'folder-' + Math.random().toString(36).substr(2, 5), url: '#', message: 'Carpeta creada (DEV)' });
                         break;
                     case 'downloadFile':
-                        resolve({ success: true, content: 'base64mock', mimeType: 'application/pdf', name: 'archivo.pdf', size: 1024, message: 'Descargado (DEV)' });
+                        resolve({
+                            success: true,
+                            content: 'UklGRiIAAABXUmZFZGNXAFZhc2ljIGJhc2ljIGJhc2lj', // Dummy base64
+                            mimeType: 'application/pdf',
+                            name: 'documento_descargado.pdf',
+                            size: 1024,
+                            message: 'Archivo preparado para descarga (DEV)'
+                        });
                         break;
                     case 'searchFilesInFolder':
                         resolve([{ id: '1', name: 'Resultado_' + args[1] + '.pdf', mimeType: 'application/pdf', url: '#', size: 512, lastUpdated: new Date().toISOString() }]);
@@ -117,6 +124,7 @@ const runGoogleFunction = (functionName, args = []) => {
                         break;
                     default:
                         resolve([]);
+                        break;
                 }
             }, 800);
             return;
@@ -140,8 +148,7 @@ const runGoogleFunction = (functionName, args = []) => {
             .withFailureHandler((error) => {
                 console.error(`❌ Error en Backend [${functionName}]:`, error);
                 reject(error);
-            })
-        [functionName](...args);
+            })[functionName](...args);
     });
 };
 
@@ -215,10 +222,8 @@ export const api = {
         delete: (id) => runGoogleFunction('deleteItem', ['tesis', id]),
     },
 
-    // Gestión de Eventos
-    events: {
-        create: (data) => runGoogleFunction('createItem', ['evento', data]),
-    },
+    // Gestión de Eventos (Combinado abajo)
+
 
     // Gestión de Externos
     externals: {

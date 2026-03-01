@@ -1,90 +1,17 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
     Plus, Search, GraduationCap, Eye, Edit, Trash2,
     X, CheckSquare, Square, SlidersHorizontal,
     MessageCircle, ChevronLeft, ChevronRight, FileSpreadsheet,
-    Check, ChevronDown,
-    Briefcase, Download, User, FolderOpen
+    Briefcase, Download, FolderOpen
 } from 'lucide-react';
 import { api } from '../../services/api';
-import Swal, { toast } from '../../utils/swalUtils';
+import { toast } from '../../utils/swalUtils';
 import BulkEditModal from '../../components/modals/BulkEditModal';
 import ExportModal from '../../components/modals/ExportModal';
 import { useNotifications } from '../../context/NotificationContext';
-
-// --- ESTILOS VISUALES (GLASS + APPLE + FIX ALERT) ---
-const styles = `
-  /* Panel Glass General */
-  .glass-panel {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  }
-  .dark .glass-panel {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  }
-
-  /* Filas Tabla */
-  .glass-row {
-    background: rgba(255, 255, 255, 0.45);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid rgba(0,0,0,0.03);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .dark .glass-row {
-    background: rgba(30, 41, 59, 0.4);
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-  }
-  .glass-row:hover {
-    transform: scale-[1.005] translateY(-1px);
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-    z-index: 10;
-    border-radius: 12px;
-  }
-  .dark .glass-row:hover {
-    background: rgba(30, 41, 59, 0.95);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-  }
-
-  /* Buscador Apple Style */
-  .apple-search {
-    background: rgba(0, 0, 0, 0.05); 
-    border: 1px solid transparent;
-    transition: all 0.3s ease;
-  }
-  .dark .apple-search {
-    background: rgba(0, 0, 0, 0.4); 
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
-  }
-  .apple-search:focus-within {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(99, 102, 241, 0.5);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-  }
-  .dark .apple-search:focus-within {
-    background: rgba(15, 23, 42, 0.9); 
-    border-color: rgba(99, 102, 241, 0.5);
-  }
-
-  /* Select Dropdown */
-  .glass-dropdown-menu {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(0,0,0,0.05);
-    box-shadow: 0 15px 40px -10px rgba(0, 0, 0, 0.2);
-  }
-  .dark .glass-dropdown-menu {
-    background: rgba(15, 23, 42, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-`;
+import FilterSelect from '../../components/common/FilterSelect';
 
 const TeacherList = () => {
     const { addNotification } = useNotifications();
@@ -165,7 +92,7 @@ const TeacherList = () => {
             const getVal = (key) => t[key] || t[key.toLowerCase()] || t[key.toUpperCase()] || '';
             const status = getVal('Activo') === 'Sí' ? 'Activo' : 'Inactivo';
             return {
-                id: getVal('ID_Docente') || getVal('id') || String(Math.random()),
+                id: getVal('ID_Docente') || getVal('id') || `temp-${Math.random()}`,
                 nombre: `${getVal('Nombre1')} ${getVal('Nombre2')} ${getVal('Apellido1')} ${getVal('Apellido2')}`.trim(),
                 email: getVal('Email'),
                 tipoDoc: getVal('Tipo_Documento'),
@@ -203,14 +130,14 @@ const TeacherList = () => {
     };
 
     const getStatusBadge = (status) => {
-        const styles = {
+        const badgeStyles = {
             'Activo': 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
             'Inactivo': 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
             'Sabático': 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
         };
         const dotColors = { 'Activo': 'bg-emerald-500', 'Inactivo': 'bg-red-500', 'Sabático': 'bg-amber-500' };
         return (
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border inline-flex items-center gap-1.5 ${styles[status] || 'bg-slate-100 text-slate-600'}`}>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border inline-flex items-center gap-1.5 ${badgeStyles[status] || 'bg-slate-100 text-slate-600'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${dotColors[status] || 'bg-slate-400'}`}></span>
                 {status}
             </span>
@@ -219,8 +146,6 @@ const TeacherList = () => {
 
     return (
         <div className="animate-fade-in relative pb-32 pt-6 px-4 md:px-8">
-            <style>{styles}</style>
-
             {/* DOCK FLOTANTE */}
             {selectedIds.size > 0 && (
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-bottom-10 fade-in duration-300">
@@ -255,10 +180,10 @@ const TeacherList = () => {
                     <p className="text-slate-500 dark:text-slate-400 mt-1 ml-1 text-sm font-medium">Gestión del cuerpo docente y vinculación laboral.</p>
                 </div>
                 <div className="flex gap-3 w-full lg:w-auto">
-                    <button onClick={() => setIsExportModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl glass-panel hover:bg-white/80 dark:hover:bg-white/10 transition-all font-bold text-slate-700 dark:text-slate-200 shadow-sm border border-white/50">
+                    <button onClick={() => setIsExportModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl glass-panel transition-all font-bold text-slate-700 dark:text-slate-200 shadow-sm">
                         <Download size={18} className="text-orange-500" /> Exportar
                     </button>
-                    <Link to="/teachers/import" className="flex items-center gap-2 px-5 py-2.5 rounded-xl glass-panel hover:bg-white/80 dark:hover:bg-white/10 transition-all font-bold text-slate-700 dark:text-slate-200 shadow-sm border border-white/50">
+                    <Link to="/teachers/import" className="flex items-center gap-2 px-5 py-2.5 rounded-xl glass-panel transition-all font-bold text-slate-700 dark:text-slate-200 shadow-sm">
                         <FileSpreadsheet size={18} className="text-emerald-500" /> Importar
                     </Link>
                     <Link to="/teachers/new" className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 transition-all font-bold">
@@ -278,7 +203,7 @@ const TeacherList = () => {
                                 placeholder="Buscar por nombre, documento..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl apple-search outline-none text-sm transition-all text-slate-700 dark:text-white placeholder-slate-400"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl apple-search text-sm placeholder-slate-400"
                             />
                         </div>
                         <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${showFilters ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-white/5'}`}>
@@ -306,6 +231,7 @@ const TeacherList = () => {
                                 <th className="px-4 pb-2 w-12 text-center">
                                     <button onClick={toggleSelectAll}>{selectedIds.size > 0 && selectedIds.size === processedTeachers.length ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}</button>
                                 </th>
+                                <th className="px-4 pb-2">Código</th>
                                 <th className="px-4 pb-2">Docente</th>
                                 <th className="px-4 pb-2">Documento</th>
                                 <th className="px-4 pb-2">Vinculación</th>
@@ -325,6 +251,11 @@ const TeacherList = () => {
                                         <tr key={teacher.id} className={`group glass-row rounded-xl ${selectedIds.has(teacher.id) ? 'ring-2 ring-indigo-500 bg-indigo-50/60 dark:bg-indigo-900/30' : ''}`}>
                                             <td className="p-4 text-center first:rounded-l-xl">
                                                 <button onClick={() => toggleSelectOne(teacher.id)}>{selectedIds.has(teacher.id) ? <CheckSquare size={20} className="text-indigo-600" /> : <Square size={20} />}</button>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                                                    {teacher.id}
+                                                </span>
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3.5">
@@ -370,46 +301,15 @@ const TeacherList = () => {
                 </div>
                 {!loading && (
                     <div className="flex justify-center gap-2 mt-6">
-                        <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-xl glass-panel hover:bg-white/80 dark:hover:bg-white/10 disabled:opacity-50"><ChevronLeft size={20} /></button>
+                        <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-xl glass-panel disabled:opacity-50"><ChevronLeft size={20} /></button>
                         <span className="px-4 py-2 glass-panel rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center shadow-sm">{currentPage} / {totalPages}</span>
-                        <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-xl glass-panel hover:bg-white/80 dark:hover:bg-white/10 disabled:opacity-50"><ChevronRight size={20} /></button>
+                        <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-xl glass-panel disabled:opacity-50"><ChevronRight size={20} /></button>
                     </div>
                 )}
             </div>
 
             <BulkEditModal isOpen={isBulkModalOpen} onClose={() => setIsBulkModalOpen(false)} selectedIds={selectedIds} type="docente" onSuccess={() => { loadTeachers(); setSelectedIds(new Set()); }} />
             <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} data={selectedIds.size > 0 ? processedTeachers.filter(t => selectedIds.has(t.id)) : processedTeachers} sourceName="Docentes" />
-        </div>
-    );
-};
-
-const FilterSelect = ({ label, value, onChange, options }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const wrapperRef = useRef(null);
-    useEffect(() => {
-        function handleClickOutside(event) { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [wrapperRef]);
-    return (
-        <div className="w-full relative" ref={wrapperRef}>
-            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block ml-1">{label}</label>
-            <button onClick={() => setIsOpen(!isOpen)} className="w-full text-left glass-panel rounded-xl py-2 px-3 flex items-center justify-between text-sm text-slate-700 dark:text-white transition-all hover:bg-white/40 dark:hover:bg-white/5">
-                <span className="truncate">{value}</span>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isOpen && (
-                <div className="absolute z-50 mt-2 w-full rounded-xl glass-dropdown-menu overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                    <ul className="max-h-48 overflow-auto py-1 custom-scrollbar">
-                        {options.map((opt) => (
-                            <li key={opt} onClick={() => { onChange(opt); setIsOpen(false); }} className={`px-3 py-2 text-sm cursor-pointer flex items-center justify-between transition-colors ${value === opt ? 'bg-indigo-500/10 text-indigo-600 font-medium' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}>
-                                {opt}
-                                {value === opt && <Check size={14} />}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
         </div>
     );
 };

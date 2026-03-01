@@ -223,3 +223,19 @@ function getEntityFiles(folderId) {
         return [];
     }
 }
+
+/**
+ * Mueve una carpeta a la papelera de Drive.
+ * @param {string} folderId - ID de la carpeta a eliminar.
+ */
+function deleteEntityFolder(folderId) {
+    try {
+        if (!folderId) return { success: false, message: "ID de carpeta no proporcionado" };
+        const folder = DriveApp.getFolderById(folderId);
+        folder.setTrashed(true);
+        return { success: true, message: "Carpeta movida a la papelera" };
+    } catch (e) {
+        Logger.log("Error en deleteEntityFolder: " + e.toString());
+        return { success: false, message: e.toString() };
+    }
+}

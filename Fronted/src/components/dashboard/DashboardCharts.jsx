@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
 import { Download, Share2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -14,11 +14,15 @@ const DARK_COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa'];
 export const StudentStatusChart = ({ data, darkMode }) => {
     const chartRef = useRef(null);
 
-    const chartData = [
+    const chartData = useMemo(() => [
         { name: 'Activos', value: data.activos || 0 },
         { name: 'Egresados', value: data.egresados || 0 },
         { name: 'Graduados', value: data.graduados || 0 },
-    ].filter(item => item.value > 0);
+    ].filter(item => item.value > 0), [data.activos, data.egresados, data.graduados]);
+
+    const pieCells = useMemo(() => chartData.map((entry, index) => (
+        <Cell key={`cell-${index}`} fill={darkMode ? DARK_COLORS[index % DARK_COLORS.length] : COLORS[index % COLORS.length]} />
+    )), [chartData, darkMode]);
 
     const downloadChart = async () => {
         if (!chartRef.current) return;
@@ -52,9 +56,7 @@ export const StudentStatusChart = ({ data, darkMode }) => {
                             dataKey="value"
                             label={({ value }) => value} // Muestra el valor fuera del segmento
                         >
-                            {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={darkMode ? DARK_COLORS[index % DARK_COLORS.length] : COLORS[index % COLORS.length]} />
-                            ))}
+                            {pieCells}
                         </Pie>
                         <Tooltip
                             contentStyle={{ backgroundColor: darkMode ? '#1e293b' : '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -72,10 +74,14 @@ export const StudentStatusChart = ({ data, darkMode }) => {
 export const ThesisStatusChart = ({ data, darkMode }) => {
     const chartRef = useRef(null);
 
-    const chartData = [
+    const chartData = useMemo(() => [
         { name: 'En Curso', value: data.enCurso || 0 },
         { name: 'Sustentadas', value: data.sustentadas || 0 },
-    ].filter(item => item.value > 0);
+    ].filter(item => item.value > 0), [data.enCurso, data.sustentadas]);
+
+    const barCells = useMemo(() => chartData.map((entry, index) => (
+        <Cell key={`cell-${index}`} fill={index === 0 ? (darkMode ? '#fbbf24' : '#f59e0b') : (darkMode ? '#34d399' : '#10b981')} />
+    )), [chartData, darkMode]);
 
     const downloadChart = async () => {
         if (!chartRef.current) return;
@@ -108,9 +114,7 @@ export const ThesisStatusChart = ({ data, darkMode }) => {
                             itemStyle={{ color: darkMode ? '#fff' : '#1e293b' }}
                         />
                         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                            {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={index === 0 ? (darkMode ? '#fbbf24' : '#f59e0b') : (darkMode ? '#34d399' : '#10b981')} />
-                            ))}
+                            {barCells}
                             <LabelList dataKey="value" position="top" fill={darkMode ? "#94a3b8" : "#475569"} fontSize={12} />
                         </Bar>
                     </BarChart>

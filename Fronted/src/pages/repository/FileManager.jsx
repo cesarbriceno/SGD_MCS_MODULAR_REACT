@@ -83,6 +83,38 @@ const FileManager = ({
         setContextMenu(null);
     };
 
+    const handleDownload = async (item) => {
+        try {
+            toast.info('Preparando descarga', 'Espera un momento...');
+            const res = await api.drive.downloadFile(item.id);
+            if (res.success && res.content) {
+                const byteCharacters = atob(res.content);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: res.mimeType || 'application/octet-stream' });
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = res.name || item.name;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                toast.success('Listo', 'Archivo descargado');
+            } else {
+                toast.error('Error', res.message || 'No se pudo descargar el archivo');
+            }
+        } catch (error) {
+            console.error('Download error:', error);
+            toast.error('Error', 'Fallo técnico en la descarga');
+        }
+        setContextMenu(null);
+    };
+
     const handleRename = async (item, isFolder) => {
         const { value: newName, isConfirmed } = await toast.prompt(
             'Renombrar',
@@ -229,15 +261,25 @@ const FileManager = ({
                 </div>
 
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {!item.isFolder && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
+                            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-green-500 transition-colors"
+                            title="Descargar"
+                        >
+                            <Download size={16} />
+                        </button>
+                    )}
                     <button
                         onClick={(e) => { e.stopPropagation(); window.open(item.url, '_blank'); }}
-                        className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-indigo-500"
+                        className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-indigo-500 transition-colors"
+                        title="Abrir en Drive"
                     >
                         <ArrowUpRight size={16} />
                     </button>
                     <button
-                        onClick={(e) => handleContextMenu(e, item, item.isFolder)}
-                        className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600"
+                        onClick={(e) => { e.stopPropagation(); handleContextMenu(e, item, item.isFolder); }}
+                        className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                         <MoreVertical size={16} />
                     </button>
@@ -271,8 +313,15 @@ const FileManager = ({
                                 onClick={() => window.open(contextMenu.item.url, '_blank')}
                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 rounded-lg transition-colors"
                             >
-                                <Eye size={16} />
-                                Abrir / Vista Previa
+                                <ArrowUpRight size={16} />
+                                Ver en Drive
+                            </button>
+                            <button
+                                onClick={() => handleDownload(contextMenu.item)}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 rounded-lg transition-colors"
+                            >
+                                <Download size={16} />
+                                Descargar
                             </button>
                             <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />
                         </>

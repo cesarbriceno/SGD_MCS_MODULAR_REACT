@@ -74,17 +74,18 @@ function searchUniversal(query, context) {
 // ==========================================
 function getSimpleData(sheet) {
     if (!sheet) return [];
-    const data = sheet.getDataRange().getDisplayValues();
+    // getValues() es más rápido que getDisplayValues() porque no procesa formatos
+    const data = sheet.getDataRange().getValues();
     if (data.length < 2) return [];
 
-    const headers = data.shift();
+    const headers = data.shift().map(h =>
+        h.toString().trim().replace(/\s+/g, '_')
+    );
 
     return data.map(row => {
         let obj = {};
         headers.forEach((h, i) => {
-            // Quitamos espacios por si acaso (ej: "ID Estudiante" -> "ID_Estudiante")
-            let cleanHeader = h.toString().trim().replace(/\s+/g, '_');
-            obj[cleanHeader] = row[i];
+            if (h) obj[h] = row[i];
         });
         return obj;
     });
@@ -117,20 +118,29 @@ function deleteItem(type, id) {
 
     const sheet = ss.getSheetByName(sheetName);
     const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const folderIdCol = headers.indexOf('ID_Carpeta_Drive');
 
-    // Buscar la fila por ID (Asumimos que el ID siempre está en la columna 0 o 1)
-    // En nuestro esquema Setup.js, el ID suele ser la primera columna.
+    // Buscar la fila por ID
     let rowIndex = -1;
+    let folderIdToDelete = "";
+
     for (let i = 1; i < data.length; i++) {
         if (String(data[i][0]) === String(id)) {
-            rowIndex = i + 1; // +1 porque los arrays son base 0 pero las filas base 1
+            rowIndex = i + 1;
+            if (folderIdCol > -1) folderIdToDelete = data[i][folderIdCol];
             break;
         }
     }
 
     if (rowIndex > 0) {
+        // --- NUEVO: ELIMINAR CARPETA DE DRIVE ---
+        if (folderIdToDelete) {
+            deleteEntityFolder(folderIdToDelete);
+        }
+
         sheet.deleteRow(rowIndex);
-        return { success: true, message: 'Eliminado correctamente' };
+        return { success: true, message: 'Eliminado correctamente (con carpeta de Drive si existía)' };
     } else {
         return { success: false, message: 'ID no encontrado' };
     }
@@ -255,10 +265,13 @@ function createItem(type, data) {
         // 2. NORMALIZACIÓN DE DATOS (Nombres, correos, etc.)
         data = normalizeData(type, data);
 
-        // 3. CREACIÓN DE CARPETA EN DRIVE
-        const folderInfo = createEntityFolder(type, data);
-        data.ID_Carpeta_Drive = folderInfo.id;
-        data.URL_Carpeta_Drive = folderInfo.url;
+        // 3. CREACIÓN DE CARPETA EN DRIVE (OPCIONAL)
+        // El frontend debe enviar _createFolder: true
+        if (data._createFolder !== false) {
+            const folderInfo = createEntityFolder(type, data);
+            data.ID_Carpeta_Drive = folderInfo.id;
+            data.URL_Carpeta_Drive = folderInfo.url;
+        }
 
         // 1. Obtener encabezados
         const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -547,16 +560,22 @@ function bulkDeleteItems(type, ids) {
 
     const sheet = ss.getSheetByName(sheetName);
     const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const folderIdCol = headers.indexOf('ID_Carpeta_Drive');
 
     // Eliminar de abajo hacia arriba para no alterar los índices
     let count = 0;
     for (let i = data.length - 1; i >= 1; i--) {
         const currentId = String(data[i][0]);
         if (ids.includes(currentId)) {
+            // --- NUEVO: ELIMINAR CARPETA DE DRIVE ---
+            if (folderIdCol > -1 && data[i][folderIdCol]) {
+                deleteEntityFolder(data[i][folderIdCol]);
+            }
             sheet.deleteRow(i + 1);
             count++;
         }
     }
 
-    return { success: true, message: `Se eliminaron ${count} registros.` };
+    return { success: true, message: `Se eliminaron ${count} registros y sus carpetas de Drive correspondientes.` };
 }
