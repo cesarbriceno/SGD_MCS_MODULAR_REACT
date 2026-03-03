@@ -66,7 +66,7 @@ const ExternList = () => {
     const [rawExterns, setRawExterns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 8;
+    const [itemsPerPage, setItemsPerPage] = useState(8);
     const [searchTerm, setSearchTerm] = useState('');
 
     const [filterOrigin, setFilterOrigin] = useState('Todos');
@@ -151,6 +151,20 @@ const ExternList = () => {
     const currentItems = processedExterns.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(processedExterns.length / itemsPerPage);
 
+    const toggleSelectAll = () => {
+        const currentIds = currentItems.map(t => t.id);
+        const allSelected = currentIds.length > 0 && currentIds.every(id => selectedIds.has(id));
+
+        const newSet = new Set(selectedIds);
+        if (allSelected) {
+            currentIds.forEach(id => newSet.delete(id));
+        } else {
+            currentIds.forEach(id => newSet.add(id));
+        }
+        setSelectedIds(newSet);
+    };
+
+
     return (
         <div className="animate-fade-in relative pb-32 pt-6 px-4 md:px-8">
             <style>{styles}</style>
@@ -196,7 +210,10 @@ const ExternList = () => {
                             className="w-full pl-12 pr-4 py-2.5 rounded-xl apple-search outline-none text-sm font-medium"
                         />
                     </div>
-                    <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${showFilters ? 'bg-green-500/10 text-green-600' : 'text-slate-600 hover:bg-black/5'}`}>
+                    <button onClick={toggleSelectAll} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/5 transition-all">
+                        {currentItems.length > 0 && currentItems.every(t => selectedIds.has(t.id)) ? <CheckSquare size={18} className="text-green-600" /> : <Square size={18} />} Seleccionar
+                    </button>
+                    <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${showFilters ? 'bg-green-500/10 text-green-600' : 'text-slate-600 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'}`}>
                         <SlidersHorizontal size={18} /> Filtros
                     </button>
                 </div>
@@ -238,9 +255,19 @@ const ExternList = () => {
                                         <div className="bg-green-100 p-1.5 rounded-lg text-green-600"><User size={16} /></div>
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.origen}</span>
                                     </div>
-                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase bg-blue-500/10 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
-                                        {item.id}
-                                    </span>
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={() => {
+                                            const newSet = new Set(selectedIds);
+                                            if (newSet.has(item.id)) newSet.delete(item.id);
+                                            else newSet.add(item.id);
+                                            setSelectedIds(newSet);
+                                        }} className="transition-transform active:scale-95 z-20">
+                                            {selectedIds.has(item.id) ? <CheckSquare size={20} className="text-green-600" /> : <Square size={20} className="text-slate-300 dark:text-slate-600" />}
+                                        </button>
+                                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase bg-blue-500/10 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                                            {item.id}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div>
                                     <h3 className="text-base font-black text-slate-800 dark:text-white leading-tight uppercase tracking-tight">{item.nombre}</h3>
@@ -271,11 +298,28 @@ const ExternList = () => {
             </div>
 
             {/* PAGINATION */}
-            {!loading && totalPages > 1 && (
-                <div className="flex justify-center gap-3 mt-10">
-                    <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="p-3 glass-panel rounded-2xl disabled:opacity-30"><ChevronLeft size={20} /></button>
-                    <div className="px-6 py-3 glass-panel rounded-2xl font-black text-sm tracking-[0.2em]">{currentPage} / {totalPages}</div>
-                    <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="p-3 glass-panel rounded-2xl disabled:opacity-30"><ChevronRight size={20} /></button>
+            {!loading && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 px-2 border-t border-slate-200/50 dark:border-white/10 pt-4">
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Mostrar</span>
+                        <select
+                            value={itemsPerPage}
+                            onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                            className="bg-white/50 dark:bg-black/20 text-slate-700 dark:text-white rounded-xl py-2 px-3 border border-slate-200/50 outline-none text-xs font-bold"
+                        >
+                            <option value={8}>8</option>
+                            <option value={16}>16</option>
+                            <option value={32}>32</option>
+                            <option value={processedExterns.length > 0 ? processedExterns.length : 100}>Todos</option>
+                        </select>
+                    </div>
+                    {totalPages > 0 && (
+                        <div className="flex justify-center gap-3">
+                            <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="p-3 glass-panel rounded-2xl disabled:opacity-30"><ChevronLeft size={20} /></button>
+                            <div className="px-6 py-3 glass-panel rounded-2xl font-black text-sm tracking-[0.2em]">{currentPage} / {totalPages}</div>
+                            <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="p-3 glass-panel rounded-2xl disabled:opacity-30"><ChevronRight size={20} /></button>
+                        </div>
+                    )}
                 </div>
             )}
 

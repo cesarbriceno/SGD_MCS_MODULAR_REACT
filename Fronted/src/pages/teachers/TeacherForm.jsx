@@ -15,67 +15,13 @@ import FolderExplorer from '../../components/common/FolderExplorer';
 import DocumentArchive from '../documents/DocumentArchive';
 
 const styles = `
-  @keyframes icon-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-  @keyframes icon-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
-  
-  .icon-hover-bounce:hover { animation: icon-bounce 0.5s ease-in-out; color: #6366f1; }
-  .icon-hover-pulse:hover { animation: icon-pulse 0.4s ease-in-out; color: #34d399; }
-
-  .app-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; background-color: #f8fafc; }
-  .dark .app-bg { background-color: #0f172a; }
-  
-  .orb { position: fixed; border-radius: 50%; filter: blur(80px); z-index: -1; opacity: 0.6; animation: float 10s ease-in-out infinite; }
-  .orb-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(99,102,241,0.4) 0%, rgba(0,0,0,0) 70%); }
-  .orb-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(236,72,153,0.3) 0%, rgba(0,0,0,0) 70%); }
-  
-  .dark .orb-1 { background: radial-gradient(circle, rgba(79,70,229,0.2) 0%, rgba(0,0,0,0) 70%); }
-  .dark .orb-2 { background: radial-gradient(circle, rgba(190,24,93,0.15) 0%, rgba(0,0,0,0) 70%); }
-
-  @keyframes float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(20px, 30px); } }
-
-  .glass-card-premium {
-    position: relative; border-radius: 24px;
-    background: rgba(255, 255, 255, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.7);
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Local adjustments if needed */
+  .glass-section-header {
+    background: rgba(255, 255, 255, 0.4); border-radius: 1.5rem; padding: 1rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; transition: all 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.2);
   }
-  .dark .glass-card-premium {
-    background: rgba(30, 41, 59, 0.4); 
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-  }
-  .glass-card-premium:hover {
-    transform: translateY(-4px);
-    background: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.1);
-  }
-  .dark .glass-card-premium:hover {
-    background: rgba(30, 41, 59, 0.6);
-  }
-
-  .premium-input {
-    background: rgba(255, 255, 255, 0.3); border: 1px solid rgba(0, 0, 0, 0.1); color: #1e293b; 
-    transition: all 0.2s; padding-top: 0.8rem; padding-bottom: 0.8rem;
-  }
-  .dark .premium-input {
-    background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); color: #f1f5f9;
-  }
-  .premium-input:focus {
-    background: rgba(255, 255, 255, 0.9); border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
-  }
-  .dark .premium-input:focus {
-    background: rgba(15, 23, 42, 0.8); border-color: #818cf8;
-  }
-  
-  .glass-dropdown {
-    background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 15px 40px -10px rgba(0, 0, 0, 0.15);
-  }
-  .dark .glass-dropdown {
-    background: rgba(15, 23, 42, 0.98); border: 1px solid rgba(255, 255, 255, 0.1);
-  }
+  .dark .glass-section-header { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); }
 `;
 
 const TeacherForm = () => {
@@ -213,11 +159,8 @@ const TeacherForm = () => {
     const isDisabled = isView || loading;
 
     return (
-        <div className="relative pb-24 animate-fade-in font-sans text-slate-800 dark:text-slate-100">
+        <div className="relative pb-24 animate-fade-in font-sans text-slate-800 dark:text-slate-100 z-10">
             <style>{styles}</style>
-            <div className="app-bg"></div>
-            <div className="orb orb-1"></div>
-            <div className="orb orb-2"></div>
 
             <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 relative z-10">
                 <button onClick={() => navigate('/teachers')} className="group flex items-center gap-2 px-5 py-2.5 rounded-full glass-card-premium hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all">
@@ -249,7 +192,7 @@ const TeacherForm = () => {
 
             {activeMainTab === 'docs' && id ? (
                 <div className="relative z-10 max-w-5xl mx-auto">
-                    <div className="glass-card-premium p-10 rounded-[2.5rem] border-indigo-500/20">
+                    <div className="glass-panel-premium p-10 rounded-[2.5rem] border-indigo-500/20">
                         <DocumentArchive
                             beneficiaryId={id}
                             beneficiaryName={`${formData.Nombre1} ${formData.Apellido1}`}

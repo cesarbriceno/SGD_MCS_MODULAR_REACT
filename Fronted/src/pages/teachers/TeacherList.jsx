@@ -18,7 +18,7 @@ const TeacherList = () => {
     const [rawTeachers, setRawTeachers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     const [searchTerm, setSearchTerm] = useState('');
 
     const [filterStatus, setFilterStatus] = useState('Todos');
@@ -118,8 +118,16 @@ const TeacherList = () => {
     const totalPages = Math.ceil(processedTeachers.length / itemsPerPage);
 
     const toggleSelectAll = () => {
-        if (selectedIds.size === processedTeachers.length) setSelectedIds(new Set());
-        else setSelectedIds(new Set(processedTeachers.map(t => t.id)));
+        const currentIds = currentItems.map(t => t.id);
+        const allSelected = currentIds.length > 0 && currentIds.every(id => selectedIds.has(id));
+
+        const newSet = new Set(selectedIds);
+        if (allSelected) {
+            currentIds.forEach(id => newSet.delete(id));
+        } else {
+            currentIds.forEach(id => newSet.add(id));
+        }
+        setSelectedIds(newSet);
     };
 
     const toggleSelectOne = (id) => {
@@ -229,7 +237,7 @@ const TeacherList = () => {
                         <thead>
                             <tr className="text-slate-600 dark:text-slate-300 text-[11px] font-extrabold uppercase tracking-widest pl-4">
                                 <th className="px-4 pb-2 w-12 text-center">
-                                    <button onClick={toggleSelectAll}>{selectedIds.size > 0 && selectedIds.size === processedTeachers.length ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}</button>
+                                    <button onClick={toggleSelectAll}>{currentItems.length > 0 && currentItems.every(t => selectedIds.has(t.id)) ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} />}</button>
                                 </th>
                                 <th className="px-4 pb-2">Código</th>
                                 <th className="px-4 pb-2">Docente</th>
@@ -241,9 +249,9 @@ const TeacherList = () => {
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr><td colSpan="6" className="p-12 text-center text-slate-400 glass-panel rounded-xl italic">Cargando docentes...</td></tr>
+                                <tr><td colSpan="7" className="p-12 text-center text-slate-400 glass-panel rounded-xl italic">Cargando docentes...</td></tr>
                             ) : processedTeachers.length === 0 ? (
-                                <tr><td colSpan="6" className="p-12 text-center text-slate-400 glass-panel rounded-xl">No hay registros.</td></tr>
+                                <tr><td colSpan="7" className="p-12 text-center text-slate-400 glass-panel rounded-xl">No hay registros.</td></tr>
                             ) : (
                                 currentItems.map((teacher) => {
                                     const avatar = getAvatarStyle(teacher.nombre);
@@ -259,9 +267,6 @@ const TeacherList = () => {
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3.5">
-                                                    <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md ${avatar.gradient}`}>
-                                                        {avatar.initials}
-                                                    </div>
                                                     <div>
                                                         <div className="font-bold text-sm text-slate-800 dark:text-white leading-tight">{teacher.nombre}</div>
                                                         <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">{teacher.email}</div>
@@ -300,10 +305,26 @@ const TeacherList = () => {
                     </table>
                 </div>
                 {!loading && (
-                    <div className="flex justify-center gap-2 mt-6">
-                        <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-xl glass-panel disabled:opacity-50"><ChevronLeft size={20} /></button>
-                        <span className="px-4 py-2 glass-panel rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center shadow-sm">{currentPage} / {totalPages}</span>
-                        <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-xl glass-panel disabled:opacity-50"><ChevronRight size={20} /></button>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-4 border-t border-slate-200 dark:border-slate-800/50 pt-4">
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Mostrar</span>
+                            <select
+                                value={itemsPerPage}
+                                onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-500 font-bold shadow-sm"
+                            >
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                                <option value={processedTeachers.length > 0 ? processedTeachers.length : 100}>Todos</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-center gap-2">
+                            <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-xl glass-panel disabled:opacity-50"><ChevronLeft size={20} /></button>
+                            <span className="px-4 py-2 glass-panel rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center shadow-sm">{currentPage} / {totalPages || 1}</span>
+                            <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages || totalPages === 0} className="p-2 rounded-xl glass-panel disabled:opacity-50"><ChevronRight size={20} /></button>
+                        </div>
                     </div>
                 )}
             </div>

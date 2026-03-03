@@ -21,7 +21,7 @@ const StudentList = () => {
     const [rawStudents, setRawStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     const [searchTerm, setSearchTerm] = useState('');
 
     // Filtros
@@ -167,8 +167,16 @@ const StudentList = () => {
     const totalPages = Math.ceil(processedStudents.length / itemsPerPage);
 
     const toggleSelectAll = () => {
-        if (selectedIds.size === processedStudents.length) setSelectedIds(new Set());
-        else setSelectedIds(new Set(processedStudents.map(s => s.id)));
+        const currentIds = currentItems.map(s => s.id);
+        const allSelected = currentIds.length > 0 && currentIds.every(id => selectedIds.has(id));
+
+        const newSet = new Set(selectedIds);
+        if (allSelected) {
+            currentIds.forEach(id => newSet.delete(id));
+        } else {
+            currentIds.forEach(id => newSet.add(id));
+        }
+        setSelectedIds(newSet);
     };
 
     const toggleSelectOne = (id) => {
@@ -313,7 +321,7 @@ const StudentList = () => {
                     <table className="w-full text-left border-separate border-spacing-y-2">
                         <thead>
                             <tr className="text-slate-600 dark:text-slate-300 text-[11px] font-extrabold uppercase tracking-widest pl-4">
-                                <th className="px-4 pb-2 w-12 text-center"><button onClick={toggleSelectAll} className="hover:text-blue-500 transition-colors">{selectedIds.size > 0 && selectedIds.size === processedStudents.length ? <CheckSquare size={18} className="text-blue-600 dark:text-blue-400" /> : <Square size={18} strokeWidth={2.5} />}</button></th>
+                                <th className="px-4 pb-2 w-12 text-center"><button onClick={toggleSelectAll} className="hover:text-blue-500 transition-colors">{currentItems.length > 0 && currentItems.every(s => selectedIds.has(s.id)) ? <CheckSquare size={18} className="text-blue-600 dark:text-blue-400" /> : <Square size={18} strokeWidth={2.5} />}</button></th>
                                 <th className="px-4 pb-2">Código</th>
                                 <th className="px-4 pb-2">Estudiante</th>
                                 <th className="px-4 pb-2">Documento</th>
@@ -325,9 +333,9 @@ const StudentList = () => {
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr><td colSpan="7" className="p-12 text-center text-slate-400 glass-panel rounded-xl italic">Cargando datos...</td></tr>
+                                <tr><td colSpan="8" className="p-12 text-center text-slate-400 glass-panel rounded-xl italic">Cargando datos...</td></tr>
                             ) : processedStudents.length === 0 ? (
-                                <tr><td colSpan="7" className="p-12 text-center text-slate-400 glass-panel rounded-xl">No hay coincidencias.</td></tr>
+                                <tr><td colSpan="8" className="p-12 text-center text-slate-400 glass-panel rounded-xl">No hay coincidencias.</td></tr>
                             ) : (
                                 currentItems.map((student) => {
                                     const avatar = getAvatarStyle(student.nombre);
@@ -345,9 +353,6 @@ const StudentList = () => {
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3.5">
-                                                    <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md ${avatar.gradient} border-2 border-white dark:border-slate-800`}>
-                                                        {avatar.initials}
-                                                    </div>
                                                     <div>
                                                         <div className="font-bold text-sm text-slate-800 dark:text-white leading-tight">{student.nombre}</div>
                                                         <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">{student.email}</div>
@@ -408,10 +413,26 @@ const StudentList = () => {
                     </table>
                 </div>
                 {!loading && (
-                    <div className="flex justify-center gap-2 mt-6">
-                        <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-xl glass-panel disabled:opacity-50"><ChevronLeft size={20} /></button>
-                        <span className="px-4 py-2 glass-panel rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center shadow-sm">{currentPage} / {totalPages}</span>
-                        <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-xl glass-panel disabled:opacity-50"><ChevronRight size={20} /></button>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-4 border-t border-slate-200 dark:border-slate-800/50 pt-4">
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Mostrar</span>
+                            <select
+                                value={itemsPerPage}
+                                onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-blue-500 font-bold shadow-sm"
+                            >
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                                <option value={processedStudents.length > 0 ? processedStudents.length : 100}>Todos</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-center gap-2">
+                            <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-xl glass-panel disabled:opacity-50"><ChevronLeft size={20} /></button>
+                            <span className="px-4 py-2 glass-panel rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center shadow-sm">{currentPage} / {totalPages || 1}</span>
+                            <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages || totalPages === 0} className="p-2 rounded-xl glass-panel disabled:opacity-50"><ChevronRight size={20} /></button>
+                        </div>
                     </div>
                 )}
             </div>

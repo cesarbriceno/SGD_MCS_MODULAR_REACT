@@ -31,7 +31,7 @@ const MainLayout = ({ darkMode, setDarkMode }) => {
                 />
 
                 {/* ÁREA DE CONTENIDO: z-0 para no tapar el dropdown del Nav ni el Sidebar */}
-                <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 pb-10 relative">
+                <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 md:px-8 pb-10 relative">
                     <Outlet />
                 </main>
 

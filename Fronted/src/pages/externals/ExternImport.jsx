@@ -20,6 +20,30 @@ const styles = `
   .table-container { box-shadow: inset 0 0 40px rgba(0,0,0,0.02); }
 `;
 
+const formatExcelDate = (val) => {
+    if (!val) return "";
+    try {
+        if (typeof val === 'number') {
+            const unixTime = Math.round((val - 25569) * 86400 * 1000);
+            const date = new Date(unixTime);
+            return date.toISOString().split('T')[0];
+        }
+        if (typeof val === 'string') {
+            const parts = val.split(/[\/\-]/);
+            if (parts.length === 3) {
+                if (parts[0].length <= 2 && parts[2].length === 4) {
+                    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                } else if (parts[0].length === 4 && parts[2].length <= 2) {
+                    return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                }
+            }
+        }
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return String(val);
+        return d.toISOString().split('T')[0];
+    } catch (e) { return String(val); }
+};
+
 const ExternImport = () => {
     const { addNotification } = useNotifications();
     const navigate = useNavigate();
@@ -52,6 +76,11 @@ const ExternImport = () => {
 
     const validateData = (data) => {
         const report = { total: data.length, valid: 0, invalid: 0, errors: [], recs: [] };
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        let nextSeq = findNextSequence('EXT', existingExterns.map(ex => ex.ID_Externo || ex.Cedula || ex.id), year, month);
+
         const validated = data.map((row, idx) => {
             const rowErrors = [];
 
@@ -61,16 +90,16 @@ const ExternImport = () => {
             });
 
             // Email format
-            const email = String(row.Email || row.email || "").trim().toLowerCase();
+            const email = String(row.Email || "").trim().toLowerCase();
             if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) rowErrors.push("Formato de Email inválido");
 
             // DUPLICATE CHECK
-            const doc = String(row.Numero_Documento || row.Cedula || row.cedula || "").trim();
+            const doc = String(row.Numero_Documento || "").trim();
             if (doc && existingExterns.some(ex => String(ex.Numero_Documento || ex.Cedula) === doc)) {
-                rowErrors.push(`El colaborador ya existe (Documento ${doc})`);
+                rowErrors.push(`El colaborador ya existe(Documento ${doc})`);
             }
             if (email && existingExterns.some(ex => String(ex.Email || "").toLowerCase() === email)) {
-                rowErrors.push(`Email ya registrado para colaborador (${email})`);
+                rowErrors.push(`Email ya registrado para colaborador(${email})`);
             }
 
             if (rowErrors.length > 0) {
@@ -80,13 +109,13 @@ const ExternImport = () => {
             } else {
                 report.valid++;
                 // Automatic Metadata Preparation
-                const now = new Date().toLocaleString();
+                const timestamp = now.toLocaleString();
                 return {
                     ...row,
                     _isValid: true,
-                    ID_Externo: row.ID_Externo || generateId('EXT'),
-                    Fecha_Registro: now,
-                    Ultima_Actualizacion: now
+                    ID_Externo: row.ID_Externo || generateId('EXT', { year, month, sequence: nextSeq++ }),
+                    Fecha_Registro: timestamp,
+                    Ultima_Actualizacion: timestamp
                 };
             }
         });
@@ -135,24 +164,38 @@ const ExternImport = () => {
                 const aliases = {
                     Nombre1: ['nombre', 'nombres', 'primer nombre', 'nombre1', 'first name', 'name'],
                     Apellido1: ['apellido', 'apellidos', 'primer apellido', 'apellido1', 'last name', 'surname'],
-                    Numero_Documento: ['documento', 'cedula', 'identificacion', 'cc', 'doc', 'id', 'numero_documento', 'numero documento'],
+                    Numero_Documento: ['documento', 'cedula', 'identificacion', 'cc', 'doc', 'id', 'numero_documento', 'numero documento', 'numero de documento'],
                     Email: ['correo', 'mail', 'email', 'contacto', 'e-mail'],
+                    Celular: ['telefono', 'celular', 'tel', 'movil', 'cel', 'contacto'],
                     Organizacion: ['empresa', 'organizacion', 'entidad', 'compania', 'institucion'],
                     Cargo_Perfil: ['cargo', 'perfil', 'puesto', 'cargo_perfil', 'labor'],
-                    Fecha_Ingreso: ['fecha ingreso', 'fecha registro', 'ingreso fecha', 'fecha_ingreso']
+                    Fecha_Ingreso: ['fecha ingreso', 'fecha registro', 'ingreso fecha', 'fecha_ingreso'],
+                    Lugar_Expedicion: ['lugar expedicion', 'lugar de expedicion', 'lugar_expedicion', 'lugar_exped']
                 };
+
+                const normalizeStr = (s) => (s || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, '');
 
                 const mappedData = data.map(row => {
                     const newRow = { ...row };
                     Object.keys(row).forEach(key => {
-                        const normKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const normKey = normalizeStr(key);
                         for (const [field, aliasList] of Object.entries(aliases)) {
-                            const normField = field.toLowerCase().replace(/[^a-z0-9]/g, '');
-                            if (normKey === normField || aliasList.some(a => normKey === a.toLowerCase().replace(/[^a-z0-9]/g, ''))) {
-                                newRow[field] = row[key];
+                            const normField = normalizeStr(field);
+                            if (normKey === normField || aliasList.some(a => normKey === normalizeStr(a))) {
+                                if (!newRow[field]) {
+                                    newRow[field] = row[key];
+                                }
                             }
                         }
                     });
+
+                    // DATE SANITIZATION
+                    Object.keys(newRow).forEach(key => {
+                        if (newRow[key] instanceof Date) {
+                            newRow[key] = formatExcelDate(newRow[key]);
+                        }
+                    });
+
                     return newRow;
                 });
 
@@ -173,7 +216,7 @@ const ExternImport = () => {
     };
 
     const deleteColumn = (colName) => {
-        const confirm = window.confirm(`¿Seguro que deseas eliminar la columna "${colName}"?`);
+        const confirm = window.confirm(`¿Seguro que deseas eliminar la columna "${colName}" ? `);
         if (!confirm) return;
 
         const newData = previewData.map(row => {
@@ -195,23 +238,36 @@ const ExternImport = () => {
         const year = now.getFullYear();
         const month = now.getMonth() + 1;
         const existingIds = existingExterns.map(e => e.ID_Externo || e.id);
-        let nextSeq = findNextSequence('EXT', existingIds, year, month);
+        // Recalculate sequences before actual import to be safe
+        let latestExterns = [];
+        try { latestExterns = await api.externals.list(); } catch (e) { }
+        let nextSeq = findNextSequence('EXT', latestExterns.map(ex => ex.ID_Externo || ex.Cedula || ex.id), year, month);
 
         for (let i = 0; i < validRows.length; i++) {
             const rawRecord = { ...validRows[i] };
 
             // Data Cleaning
             const record = {};
-            ALL_FIELDS.forEach(f => { if (rawRecord[f] !== undefined) record[f] = rawRecord[f]; });
+            ALL_FIELDS.forEach(f => {
+                if (rawRecord[f] !== undefined) {
+                    if (f === 'Fecha_Ingreso' || f === 'Fecha_Expedicion') {
+                        record[f] = formatExcelDate(rawRecord[f]);
+                    } else {
+                        record[f] = rawRecord[f];
+                    }
+                }
+            });
 
             // Include system-generated tags
             const timestamp = now.toLocaleString();
             record.ID_Externo = rawRecord.ID_Externo || generateId('EXT', { year, month, sequence: nextSeq++ });
             record.Fecha_Registro = rawRecord.Fecha_Registro || timestamp;
             record.Ultima_Actualizacion = rawRecord.Ultima_Actualizacion || timestamp;
-            record.Fecha_Ingreso = rawRecord.Fecha_Ingreso || timestamp;
 
-            try { await api.externals.create(record); successCount++; } catch (e) { }
+            // Map Numero_Documento to Cedula (Backend legacy)
+            record.Cedula = rawRecord.Numero_Documento;
+
+            try { await api.externals.create(record); successCount++; } catch (e) { console.error("Error creating extern", e); }
             setImportProgress(prev => ({ ...prev, current: i + 1 }));
         }
         toast.success("Importación exitosa", `${successCount} colaboradores externos registrados.`);
@@ -240,13 +296,19 @@ const ExternImport = () => {
 
     const tableHeaders = useMemo(() => {
         if (previewData.length === 0) return [];
-        return Object.keys(previewData[0]).filter(k => !k.startsWith('_'));
+        const cols = new Set();
+        previewData.forEach(row => {
+            Object.keys(row).forEach(k => {
+                if (!k.startsWith('_')) cols.add(k);
+            });
+        });
+        return Array.from(cols);
     }, [previewData]);
 
     return (
-        <div className="animate-fade-in pb-32 pt-6 px-4 md:px-8 max-w-7xl mx-auto">
+        <div className="animate-fade-in pb-32 pt-6 px-4 md:px-8 max-w-[1600px] mx-auto relative z-10">
             <style>{styles}</style>
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-8 relative z-10">
                 <button onClick={() => navigate('/externals')} className="flex items-center gap-2 px-4 py-2 rounded-xl glass-card font-bold text-sm hover:bg-white/60 transition-all shadow-sm">
                     <ArrowLeft size={18} /> Volver
                 </button>
@@ -277,7 +339,7 @@ const ExternImport = () => {
                                 <Plus size={20} strokeWidth={3} /> Adjuntar Archivo
                                 <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleFileUpload} />
                             </label>
-                            <button onClick={downloadTemplate} className="px-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl font-black text-slate-600 dark:text-slate-300 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
+                            <button onClick={downloadTemplate} className="px-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl font-black text-slate-700 dark:text-slate-200 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
                                 <Download size={20} /> Formato Base
                             </button>
                         </div>
@@ -338,7 +400,7 @@ const ExternImport = () => {
 
             {validationReport && (
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
-                    <div className="md:col-span-2 glass-card p-8 border-l-8 border-l-green-500 shadow-xl">
+                    <div className={`glass-card p-8 border-l-8 border-l-green-500 shadow-xl ${validationReport.invalid > 0 ? 'md:col-span-2' : 'md:col-span-3'}`}>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600">
                                 <Check size={18} strokeWidth={3} />
@@ -417,7 +479,7 @@ const ExternImport = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-200/50 dark:divide-white/5">
                                 {filteredData.map((row, i) => (
-                                    <tr key={i} className={`group transition-all duration-200 ${row._isValid ? 'hover:bg-green-50/30' : 'bg-red-500/[0.03] hover:bg-red-500/[0.06]'}`}>
+                                    <tr key={i} className={`group transition-all duration-200 ${row._isValid ? 'hover:bg-green-50/30' : 'bg-red-500/5 hover:bg-red-500/10'}`}>
                                         <td className="px-6 py-4 font-black text-slate-400 opacity-50">{i + 1}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex justify-center text-center">

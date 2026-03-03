@@ -20,6 +20,30 @@ const styles = `
   .table-container { box-shadow: inset 0 0 40px rgba(0,0,0,0.02); }
 `;
 
+const formatExcelDate = (val) => {
+    if (!val) return "";
+    try {
+        if (typeof val === 'number') {
+            const unixTime = Math.round((val - 25569) * 86400 * 1000);
+            const date = new Date(unixTime);
+            return date.toISOString().split('T')[0];
+        }
+        if (typeof val === 'string') {
+            const parts = val.split(/[\/\-]/);
+            if (parts.length === 3) {
+                if (parts[0].length <= 2 && parts[2].length === 4) {
+                    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                } else if (parts[0].length === 4 && parts[2].length <= 2) {
+                    return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                }
+            }
+        }
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return String(val);
+        return d.toISOString().split('T')[0];
+    } catch (e) { return String(val); }
+};
+
 const ThesisImport = () => {
     const { addNotification } = useNotifications();
     const navigate = useNavigate();
@@ -155,17 +179,29 @@ const ThesisImport = () => {
                     Nombre_Asesor: ['nombre asesor', 'asesor', 'tutor', 'nombre tutor']
                 };
 
+                const normalizeStr = (s) => (s || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, '');
+
                 const mappedData = data.map(row => {
                     const newRow = { ...row };
                     Object.keys(row).forEach(key => {
-                        const normKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const normKey = normalizeStr(key);
                         for (const [field, aliasList] of Object.entries(aliases)) {
-                            const normField = field.toLowerCase().replace(/[^a-z0-9]/g, '');
-                            if (normKey === normField || aliasList.some(a => normKey === a.toLowerCase().replace(/[^a-z0-9]/g, ''))) {
-                                newRow[field] = row[key];
+                            const normField = normalizeStr(field);
+                            if (normKey === normField || aliasList.some(a => normKey === normalizeStr(a))) {
+                                if (!newRow[field]) {
+                                    newRow[field] = row[key];
+                                }
                             }
                         }
                     });
+
+                    // DATE SANITIZATION
+                    Object.keys(newRow).forEach(key => {
+                        if (newRow[key] instanceof Date) {
+                            newRow[key] = formatExcelDate(newRow[key]);
+                        }
+                    });
+
                     return newRow;
                 });
 
@@ -185,7 +221,7 @@ const ThesisImport = () => {
     };
 
     const deleteColumn = (colName) => {
-        const confirm = window.confirm(`¿Seguro que deseas eliminar la columna "${colName}"?`);
+        const confirm = window.confirm(`¿Seguro que deseas eliminar la columna "${colName}" ? `);
         if (!confirm) return;
         const newData = previewData.map(row => {
             const { [colName]: _, ...rest } = row;
@@ -232,7 +268,7 @@ const ThesisImport = () => {
                         Nombre1: row.Nombre_Estudiante || row.Nombre1_Estudiante,
                         Apellido1: row.Apellido_Estudiante || row.Apellido1_Estudiante || '-',
                         Cedula: row.Cedula_Estudiante || row.Documento_Estudiante,
-                        Email: row.Email_Estudiante || `temp_${Date.now()}@example.com`,
+                        Email: row.Email_Estudiante || `temp_${Date.now()} @example.com`,
                         Ultima_Actualizacion: now,
                         Estado: 'Cursando'
                     };
@@ -250,7 +286,7 @@ const ThesisImport = () => {
                         Nombre1: row.Nombre_Asesor || row.Nombre1_Asesor,
                         Apellido1: row.Apellido_Asesor || row.Apellido1_Asesor || '-',
                         Cedula: row.Cedula_Asesor || row.Documento_Asesor,
-                        Email: row.Email_Asesor || `temp_doc_${Date.now()}@example.com`,
+                        Email: row.Email_Asesor || `temp_doc_${Date.now()} @example.com`,
                         Fecha_Registro: now,
                         Ultima_Actualizacion: now,
                         Activo: 'Sí'
@@ -263,7 +299,15 @@ const ThesisImport = () => {
 
                 // 3. THESIS CREATION
                 const thesisData = {};
-                THESIS_FIELDS.forEach(f => { if (row[f] !== undefined) thesisData[f] = row[f]; });
+                THESIS_FIELDS.forEach(f => {
+                    if (row[f] !== undefined) {
+                        if (f === 'Fecha_Inicio' || f === 'Fecha_Defensa') {
+                            thesisData[f] = formatExcelDate(row[f]);
+                        } else {
+                            thesisData[f] = row[f];
+                        }
+                    }
+                });
 
                 thesisData.ID_Estudiante = finalStudentId;
                 thesisData.ID_Asesor = finalAdvisorId;
@@ -273,13 +317,13 @@ const ThesisImport = () => {
                 thesisData.Ultima_Actualizacion = row.Ultima_Actualizacion || timestamp;
 
                 await api.thesis.create(thesisData);
-                success++;
+                successCount++;
             } catch (e) { console.error("Error importing thesis row", i, e); }
 
             setImportProgress(prev => ({ ...prev, current: i + 1 }));
         }
 
-        toast.success("Importación Finalizada", `Se registraron ${success} investigaciones con vinculación exitosa.`);
+        toast.success("Importación Finalizada", `Se registraron ${successCount} investigaciones con vinculación exitosa.`);
         navigate('/thesis');
     };
 
@@ -305,13 +349,19 @@ const ThesisImport = () => {
 
     const tableHeaders = useMemo(() => {
         if (previewData.length === 0) return [];
-        return Object.keys(previewData[0]).filter(k => !k.startsWith('_'));
+        const cols = new Set();
+        previewData.forEach(row => {
+            Object.keys(row).forEach(k => {
+                if (!k.startsWith('_')) cols.add(k);
+            });
+        });
+        return Array.from(cols);
     }, [previewData]);
 
     return (
-        <div className="animate-fade-in pb-32 pt-6 px-4 md:px-8 max-w-7xl mx-auto">
+        <div className="animate-fade-in pb-32 pt-6 px-4 md:px-8 max-w-[1600px] mx-auto relative z-10">
             <style>{styles}</style>
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-8 relative z-10">
                 <button onClick={() => navigate('/thesis')} className="flex items-center gap-2 px-4 py-2 rounded-xl glass-card font-bold text-sm hover:bg-white/60 transition-all shadow-sm">
                     <ArrowLeft size={18} /> Volver
                 </button>
@@ -342,7 +392,7 @@ const ThesisImport = () => {
                                 <Plus size={20} strokeWidth={3} /> Seleccionar Archivo
                                 <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleFileUpload} />
                             </label>
-                            <button onClick={downloadTemplate} className="px-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl font-black text-slate-600 dark:text-slate-300 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
+                            <button onClick={downloadTemplate} className="px-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl font-black text-slate-700 dark:text-slate-200 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
                                 <Download size={20} /> Plantilla Oficial
                             </button>
                         </div>
@@ -403,7 +453,7 @@ const ThesisImport = () => {
 
             {validationReport && (
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
-                    <div className="md:col-span-2 glass-card p-8 border-l-8 border-l-purple-500 shadow-xl">
+                    <div className={`glass-card p-8 border-l-8 border-l-purple-500 shadow-xl ${validationReport.invalid > 0 ? 'md:col-span-2' : 'md:col-span-3'}`}>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600">
                                 <Check size={18} strokeWidth={3} />
@@ -482,7 +532,7 @@ const ThesisImport = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-200/50 dark:divide-white/5">
                                 {filteredData.map((row, i) => (
-                                    <tr key={i} className={`group transition-all duration-200 ${row._isValid ? 'hover:bg-purple-50/30' : 'bg-red-500/[0.03] hover:bg-red-500/[0.06]'}`}>
+                                    <tr key={i} className={`group transition-all duration-200 ${row._isValid ? 'hover:bg-purple-50/30' : 'bg-red-500/5 hover:bg-red-500/10'}`}>
                                         <td className="px-6 py-4 font-black text-slate-400 opacity-50 text-center">{i + 1}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex justify-center">

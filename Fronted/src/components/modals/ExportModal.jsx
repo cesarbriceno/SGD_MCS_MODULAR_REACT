@@ -73,7 +73,7 @@ const ExportModal = ({ isOpen, onClose, data, sourceName = "Reporte" }) => {
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-[#1c1c1e] w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-white/10 relative">
+            <div className="bg-white dark:bg-[#1c1c1e] w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-white/10 relative overflow-y-auto overflow-x-hidden">
 
                 {/* HEADER */}
                 <div className="px-6 py-5 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-gray-50/80 dark:bg-white/5 backdrop-blur-xl">

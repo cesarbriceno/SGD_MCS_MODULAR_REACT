@@ -17,7 +17,7 @@ const ThesisList = () => {
     const [rawThesis, setRawThesis] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 8;
+    const [itemsPerPage, setItemsPerPage] = useState(8);
     const [searchTerm, setSearchTerm] = useState('');
 
     const [filterStatus, setFilterStatus] = useState('Todos');
@@ -112,8 +112,16 @@ const ThesisList = () => {
     const totalPages = Math.ceil(processedThesis.length / itemsPerPage);
 
     const toggleSelectAll = () => {
-        if (selectedIds.size === processedThesis.length) setSelectedIds(new Set());
-        else setSelectedIds(new Set(processedThesis.map(t => t.id)));
+        const currentIds = currentItems.map(t => t.id);
+        const allSelected = currentIds.length > 0 && currentIds.every(id => selectedIds.has(id));
+
+        const newSet = new Set(selectedIds);
+        if (allSelected) {
+            currentIds.forEach(id => newSet.delete(id));
+        } else {
+            currentIds.forEach(id => newSet.add(id));
+        }
+        setSelectedIds(newSet);
     };
 
     const toggleSelectOne = (id) => {
@@ -186,6 +194,9 @@ const ThesisList = () => {
                             className="w-full pl-12 pr-4 py-2.5 rounded-xl apple-search text-sm font-medium"
                         />
                     </div>
+                    <button onClick={toggleSelectAll} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/5 transition-all">
+                        {currentItems.length > 0 && currentItems.every(t => selectedIds.has(t.id)) ? <CheckSquare size={18} className="text-purple-600" /> : <Square size={18} />} Seleccionar
+                    </button>
                     <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${showFilters ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400' : 'text-slate-600 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'}`}>
                         <SlidersHorizontal size={18} /> Filtros
                     </button>
@@ -254,11 +265,28 @@ const ThesisList = () => {
             </div>
 
             {/* PAGINATION */}
-            {!loading && totalPages > 1 && (
-                <div className="flex justify-center gap-3 mt-10">
-                    <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="p-3 glass-panel rounded-2xl disabled:opacity-30 hover:bg-white/80 dark:hover:bg-white/10 transition-all"><ChevronLeft size={20} /></button>
-                    <div className="px-6 py-3 glass-panel rounded-2xl font-black text-sm tracking-[0.2em]">{currentPage} / {totalPages}</div>
-                    <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="p-3 glass-panel rounded-2xl disabled:opacity-30 hover:bg-white/80 dark:hover:bg-white/10 transition-all"><ChevronRight size={20} /></button>
+            {!loading && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 px-2 border-t border-slate-200/50 dark:border-white/10 pt-4">
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Mostrar</span>
+                        <select
+                            value={itemsPerPage}
+                            onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                            className="bg-white/50 dark:bg-black/20 text-slate-700 dark:text-white rounded-xl py-2 px-3 border border-slate-200/50 outline-none text-xs font-bold"
+                        >
+                            <option value={8}>8</option>
+                            <option value={16}>16</option>
+                            <option value={32}>32</option>
+                            <option value={processedThesis.length > 0 ? processedThesis.length : 100}>Todos</option>
+                        </select>
+                    </div>
+                    {totalPages > 0 && (
+                        <div className="flex justify-center gap-3">
+                            <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="p-3 glass-panel rounded-2xl disabled:opacity-30 hover:bg-white/80 dark:hover:bg-white/10 transition-all"><ChevronLeft size={20} /></button>
+                            <div className="px-6 py-3 glass-panel rounded-2xl font-black text-sm tracking-[0.2em]">{currentPage} / {totalPages}</div>
+                            <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="p-3 glass-panel rounded-2xl disabled:opacity-30 hover:bg-white/80 dark:hover:bg-white/10 transition-all"><ChevronRight size={20} /></button>
+                        </div>
+                    )}
                 </div>
             )}
 

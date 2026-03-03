@@ -19,7 +19,27 @@ const BulkEditModal = ({ isOpen, onClose, selectedIds, type = 'estudiante', onSu
             { key: 'Estado', label: 'Estado Académico', type: 'select', options: ['Cursando', 'Egresado', 'En Pausa', 'Retirado', 'Reingreso'] },
             { key: 'Cohorte_Ingreso', label: 'Cohorte de Ingreso', type: 'text' },
             { key: 'Cohorte_Egreso', label: 'Cohorte de Egreso', type: 'text' },
-            { key: 'Tipo_Documento', label: 'Tipo de Documento', type: 'select', options: ['CC', 'TI', 'CE', 'PAS', 'PEP'] }
+            { key: 'Tipo_Documento', label: 'Tipo de Documento', type: 'select', options: ['CC', 'TI', 'CE', 'PAS', 'PEP'] },
+
+            // Laboral
+            { key: 'Situacion_Laboral_Actual', label: 'Situación Laboral', type: 'select', options: ['Empleado', 'Independiente', 'Desempleado', 'Estudiante'] },
+            { key: 'Empresa_Institucion', label: 'Empresa / Institución', type: 'text' },
+            { key: 'Cargo_Actual', label: 'Cargo Actual', type: 'text' },
+            { key: 'Sector_Desempeno', label: 'Sector de Desempeño', type: 'select', options: ['Público', 'Privado', 'Mixto'] },
+            { key: 'Rango_Salarial', label: 'Rango Salarial', type: 'select', options: ['< 1 SMMLV', '1-2 SMMLV', '> 2 SMMLV'] },
+
+            // Ubicación / Personal
+            { key: 'Ciudad', label: 'Ciudad', type: 'text' },
+            { key: 'Depto_Residencia', label: 'Depto. Residencia', type: 'text' },
+            { key: 'Pais', label: 'País', type: 'text' },
+            { key: 'Estrato', label: 'Estrato', type: 'select', options: ['1', '2', '3', '4', '5', '6'] },
+            { key: 'Barrio', label: 'Barrio', type: 'text' },
+            { key: 'Direccion', label: 'Dirección', type: 'text' },
+
+            // Contacto
+            { key: 'Email', label: 'Email', type: 'text' },
+            { key: 'Telefono', label: 'Teléfono Fijo', type: 'text' },
+            { key: 'Celular', label: 'Celular', type: 'text' }
         ],
         'docente': [
             { key: 'Tipo_Vinculacion', label: 'Tipo de Vinculación', type: 'select', options: ['Planta', 'Catedrático'] },

@@ -135,6 +135,8 @@ export const exportToPDF = (data, columns, reportName, config = {}) => {
         body: tableRows,
         startY: 38,
         theme: 'grid',
+        horizontalPageBreak: true, // Habilitar saltos de página horizontales
+        horizontalPageBreakRepeat: 0, // Repetir columna índice? 0 para no repetir.
         headStyles: {
             fillColor: [15, 23, 42], // Slate 900
             textColor: [255, 255, 255],
@@ -145,11 +147,13 @@ export const exportToPDF = (data, columns, reportName, config = {}) => {
         bodyStyles: {
             fontSize: adjustedFontSize,
             textColor: [50, 50, 50],
-            cellPadding: 1.5
+            cellPadding: 1.5,
+            minCellHeight: 6
         },
         styles: {
             overflow: 'linebreak',
             cellWidth: 'auto',
+            minCellWidth: 15, // Ancho minímo por columna para prevenir el apilado vertical extremo
             valign: 'middle'
         },
         // Optimizar distribución de anchos

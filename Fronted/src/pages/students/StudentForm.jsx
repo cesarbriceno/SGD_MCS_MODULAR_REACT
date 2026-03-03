@@ -16,73 +16,13 @@ import FolderExplorer from '../../components/common/FolderExplorer';
 
 // --- ESTILOS CSS (ORBES + GLASS + ANIMACIONES ICONOS) ---
 const styles = `
-  /* 1. ANIMACIONES DE ICONOS (MICRO-INTERACCIONES) */
-  @keyframes icon-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-  @keyframes icon-shake { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
-  @keyframes icon-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
-  
-  .icon-hover-bounce:hover { animation: icon-bounce 0.5s ease-in-out; color: #60a5fa; }
-  .icon-hover-shake:hover { animation: icon-shake 0.4s ease-in-out; color: #a78bfa; }
-  .icon-hover-pulse:hover { animation: icon-pulse 0.4s ease-in-out; color: #34d399; }
-
-  /* 2. FONDO Y ORBES */
-  .app-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; background-color: #f8fafc; }
-  .dark .app-bg { background-color: #0f172a; }
-  
-  .orb { position: fixed; border-radius: 50%; filter: blur(80px); z-index: -1; opacity: 0.6; animation: float 10s ease-in-out infinite; }
-  .orb-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(59,130,246,0.5) 0%, rgba(0,0,0,0) 70%); }
-  .orb-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(139,92,246,0.5) 0%, rgba(0,0,0,0) 70%); }
-  
-  .dark .orb-1 { background: radial-gradient(circle, rgba(37,99,235,0.3) 0%, rgba(0,0,0,0) 70%); }
-  .dark .orb-2 { background: radial-gradient(circle, rgba(124,58,237,0.3) 0%, rgba(0,0,0,0) 70%); }
-
-  @keyframes float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(20px, 30px); } }
-
-  /* 3. TARJETA GLASS PREMIUM */
-  .glass-card-premium {
-    position: relative; border-radius: 24px;
-    background: rgba(247, 245, 245, 0.31);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    transition: all 0.3s ease;
+  /* Local adjustments if needed */
+  .glass-section-header {
+    background: rgba(255, 255, 255, 0.4); border-radius: 1.5rem; padding: 1rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; transition: all 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.2);
   }
-  .dark .glass-card-premium {
-    background: rgba(15, 23, 42, 0.4); 
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-  }
-  .glass-card-premium:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.1);
-    background: rgba(255, 255, 255, 0.47);
-  }
-  .dark .glass-card-premium:hover { background: rgba(15, 23, 42, 0.5); }
-
-  /* 4. INPUTS GLASS */
-  .premium-input {
-    background: rgba(255, 255, 255, 0.3); border: 1px solid rgba(0, 0, 0, 0.1); color: #1e293b; 
-    transition: all 0.2s; padding-top: 0.8rem; padding-bottom: 0.8rem;
-  }
-  .dark .premium-input {
-    background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); color: #f1f5f9;
-  }
-  .premium-input:focus {
-    background: rgba(255, 255, 255, 0.8); border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-  }
-  .dark .premium-input:focus {
-    background: rgba(0, 0, 0, 0.6); border-color: #818cf8;
-  }
-  
-  /* 5. DROPDOWN FLOTANTE */
-  .glass-dropdown {
-    background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-  }
-  .dark .glass-dropdown {
-    background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-  }
+  .dark .glass-section-header { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); }
 `;
 
 const StudentForm = () => {
@@ -106,7 +46,7 @@ const StudentForm = () => {
         Fecha_Expedicion: '', Lugar_Expedicion: '',
         Sexo: '', Estado_Civil: '',
         Fecha_Nacimiento: '', Lugar_Nacimiento: '',
-        Email: '', Email_Personal: '',
+        Email: '', Pais: '',
         Telefono: '', Celular: '',
         Direccion: '', Barrio: '',
         Ciudad: '', Depto_Residencia: '',
@@ -146,7 +86,7 @@ const StudentForm = () => {
                             Fecha_Expedicion: getDateVal('Fecha_Expedicion'), Lugar_Expedicion: getVal('Lugar_Expedicion'),
                             Sexo: getVal('Sexo'), Estado_Civil: getVal('Estado_Civil'),
                             Fecha_Nacimiento: getDateVal('Fecha_Nacimiento'), Lugar_Nacimiento: getVal('Lugar_Nacimiento'),
-                            Email: getVal('Email'), Email_Personal: getVal('Email_Personal'),
+                            Email: getVal('Email'), Pais: getVal('Pais') || getVal('Email_Personal'),
                             Telefono: getVal('Telefono'), Celular: getVal('Celular'),
                             Direccion: getVal('Direccion'), Barrio: getVal('Barrio'),
                             Ciudad: getVal('Ciudad'), Depto_Residencia: getVal('Depto_Residencia'),
@@ -261,17 +201,14 @@ const StudentForm = () => {
     const StateIcon = currentState.icon;
 
     return (
-        <div className="relative pb-24 animate-fade-in font-sans text-slate-800 dark:text-slate-100">
+        <div className="relative pb-24 animate-fade-in font-sans text-slate-800 dark:text-slate-100 z-10">
             <style>{styles}</style>
-            <div className="app-bg"></div>
-            <div className="orb orb-1"></div>
-            <div className="orb orb-2"></div>
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 relative z-10">
-                <button onClick={() => navigate('/students')} className="group flex items-center gap-2 px-5 py-2.5 rounded-full glass-card-premium hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
+                <button onClick={() => navigate('/students')} className="group flex items-center gap-2 px-5 py-2.5 rounded-full glass-panel-premium hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
                     <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-                    <span className="font-medium">Volver</span>
+                    <span className="font-medium text-sm">Volver</span>
                 </button>
                 <h1 className="text-3xl font-bold drop-shadow-sm text-center">{title}</h1>
             </div>
@@ -350,7 +287,7 @@ const StudentForm = () => {
                         <InputGroup label="Celular" name="Celular" required value={formData.Celular} onChange={handleChange} disabled={isDisabled} placeholder="Ej: 300..." icon={Phone} />
                         <InputGroup label="Email" name="Email" type="email" required value={formData.Email} onChange={handleChange} disabled={isDisabled} placeholder="Ej: u@mail.com" icon={Mail} />
                         <InputGroup label="Teléfono Fijo" name="Telefono" value={formData.Telefono} onChange={handleChange} disabled={isDisabled} placeholder="Ej: 604..." icon={Phone} />
-                        <InputGroup label="Email Personal" name="Email_Personal" type="email" value={formData.Email_Personal} onChange={handleChange} disabled={isDisabled} placeholder="Ej: p@gmail.com" icon={Mail} />
+                        <InputGroup label="Pais / Nacionalidad" name="Pais" value={formData.Pais} onChange={handleChange} disabled={isDisabled} placeholder="Ej: Colombia" icon={Globe} />
                         <InputGroup label="Dirección" name="Direccion" value={formData.Direccion} onChange={handleChange} disabled={isDisabled} placeholder="Ej: Cra 123..." icon={MapPin} />
                         <InputGroup label="Barrio" name="Barrio" value={formData.Barrio} onChange={handleChange} disabled={isDisabled} placeholder="Ej: Centro" icon={MapPin} />
                         <InputGroup label="Ciudad" name="Ciudad" value={formData.Ciudad} onChange={handleChange} disabled={isDisabled} placeholder="Ej: Medellín" icon={MapPin} />
