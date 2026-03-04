@@ -120,7 +120,8 @@ const ExternList = () => {
         }
     };
 
-    const processedExterns = useMemo(() => {
+    // 1. Mapeo de todos los externos
+    const allMappedExterns = useMemo(() => {
         return rawExterns.map(t => {
             const getVal = (key) => t[key] || t[key.toLowerCase()] || t[key.toUpperCase()] || '';
             const nombreCompleto = `${getVal('Nombre1')} ${getVal('Nombre2')} ${getVal('Apellido1')} ${getVal('Apellido2')}`.replace(/\s+/g, ' ').trim();
@@ -137,14 +138,19 @@ const ExternList = () => {
                 folderUrl: getVal('URL_Carpeta_Drive'),
                 raw: t
             };
-        }).filter(item => {
+        });
+    }, [rawExterns]);
+
+    // 2. Filtrado para la vista
+    const processedExterns = useMemo(() => {
+        return allMappedExterns.filter(item => {
             const searchLower = searchTerm.toLowerCase();
             return (
                 (item.nombre.toLowerCase().includes(searchLower) || item.organizacion.toLowerCase().includes(searchLower) || item.email.toLowerCase().includes(searchLower)) &&
                 (filterOrigin === 'Todos' || item.origen === filterOrigin)
             );
         });
-    }, [rawExterns, searchTerm, filterOrigin]);
+    }, [allMappedExterns, searchTerm, filterOrigin]);
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -323,7 +329,12 @@ const ExternList = () => {
                 </div>
             )}
 
-            <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} data={processedExterns} sourceName="Externos" />
+            <ExportModal
+                isOpen={isExportModalOpen}
+                onClose={() => setIsExportModalOpen(false)}
+                data={selectedIds.size > 0 ? allMappedExterns.filter(e => selectedIds.has(e.id)) : processedExterns}
+                sourceName="Externos"
+            />
         </div>
     );
 };

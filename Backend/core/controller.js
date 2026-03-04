@@ -1,10 +1,8 @@
 /**
  * 📊 API DE ESTADÍSTICAS (DASHBOARD)
- * Devuelve un resumen en tiempo real de la base de datos.
- */
-/**
- * 📊 API DE ESTADÍSTICAS (DASHBOARD)
- * Devuelve un resumen en tiempo real de la base de datos.
+ * Procesa y devuelve un resumen consolidado de todas las entidades para el dashboard de React.
+ * Incluye KPIs y datasets completos para filtrado en frontend.
+ * @returns {string} JSON con {success, stats: {estudiantes, tesis, eventos, datasets}, lastUpdate}
  */
 function getDashboardStats() {
     try {

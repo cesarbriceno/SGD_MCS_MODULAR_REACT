@@ -3,6 +3,12 @@
  * Servicio de búsqueda universal en la base de datos
  */
 
+/**
+ * Ejecuta una búsqueda filtrada en las hojas de cálculo correspondientes.
+ * @param {string} query - Texto a buscar.
+ * @param {string} context - Entidad donde buscar ('estudiante' o 'tesis').
+ * @returns {string} JSON array con los resultados encontrados.
+ */
 function executeSearch(query, context) {
     if (!query) return "[]";
     query = query.toString().toLowerCase();

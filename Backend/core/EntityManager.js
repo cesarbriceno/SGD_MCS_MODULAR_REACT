@@ -106,15 +106,14 @@ function updateItem(type, id, data) {
         if (rowIndex === -1) return { success: false, message: 'ID no encontrado' };
 
         headers.forEach((header, colIndex) => {
-            if (data.hasOwnProperty(header)) {
-                let val = data[header];
-                if (header === 'Ultima_Actualizacion') {
-                    val = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "dd/MM/yyyy HH:mm:ss");
-                }
-                if (header === 'Ultimo_Usuario') {
-                    val = Session.getActiveUser().getEmail() || 'Sistema';
-                }
+            if (header === 'Ultima_Actualizacion') {
+                const val = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), "dd/MM/yyyy HH:mm:ss");
                 sheet.getRange(rowIndex, colIndex + 1).setValue(val);
+            } else if (header === 'Ultimo_Usuario') {
+                const val = Session.getActiveUser().getEmail() || 'Sistema';
+                sheet.getRange(rowIndex, colIndex + 1).setValue(val);
+            } else if (data.hasOwnProperty(header)) {
+                sheet.getRange(rowIndex, colIndex + 1).setValue(data[header]);
             }
         });
 

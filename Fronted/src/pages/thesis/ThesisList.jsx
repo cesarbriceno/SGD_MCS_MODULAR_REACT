@@ -81,7 +81,8 @@ const ThesisList = () => {
         return [...new Set(years)].sort().reverse();
     }, [rawThesis]);
 
-    const processedThesis = useMemo(() => {
+    // 1. Mapeo de todas las tesis
+    const allMappedThesis = useMemo(() => {
         return rawThesis.map(t => {
             const getVal = (key) => t[key] || t[key.toLowerCase()] || t[key.toUpperCase()] || '';
             return {
@@ -95,7 +96,12 @@ const ThesisList = () => {
                 folderUrl: getVal('URL_Carpeta_Drive'),
                 raw: t
             };
-        }).filter(thesis => {
+        });
+    }, [rawThesis]);
+
+    // 2. Filtrado para la vista
+    const processedThesis = useMemo(() => {
+        return allMappedThesis.filter(thesis => {
             const searchLower = searchTerm.toLowerCase();
             return (
                 (thesis.titulo.toLowerCase().includes(searchLower) || thesis.estudiante.toLowerCase().includes(searchLower)) &&
@@ -104,7 +110,7 @@ const ThesisList = () => {
                 (filterType === 'Todos' || thesis.modalidad === filterType)
             );
         });
-    }, [rawThesis, searchTerm, filterStatus, filterYear, filterType]);
+    }, [allMappedThesis, searchTerm, filterStatus, filterYear, filterType]);
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -290,7 +296,7 @@ const ThesisList = () => {
                 </div>
             )}
 
-            <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} data={processedThesis} sourceName="Tesis" />
+            <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} data={selectedIds.size > 0 ? allMappedThesis.filter(t => selectedIds.has(t.id)) : processedThesis} sourceName="Tesis" />
         </div>
     );
 };

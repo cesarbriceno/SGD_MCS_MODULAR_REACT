@@ -16,7 +16,7 @@ const BulkEditModal = ({ isOpen, onClose, selectedIds, type = 'estudiante', onSu
     // Configuración de campos permitidos para edición masiva según el módulo
     const fieldsConfig = {
         'estudiante': [
-            { key: 'Estado', label: 'Estado Académico', type: 'select', options: ['Cursando', 'Egresado', 'En Pausa', 'Retirado', 'Reingreso'] },
+            { key: 'Estado', label: 'Estado Académico', type: 'select', options: ['Cursando', 'Egresado', 'Pausa', 'Desertor', 'Reingresado'] },
             { key: 'Cohorte_Ingreso', label: 'Cohorte de Ingreso', type: 'text' },
             { key: 'Cohorte_Egreso', label: 'Cohorte de Egreso', type: 'text' },
             { key: 'Tipo_Documento', label: 'Tipo de Documento', type: 'select', options: ['CC', 'TI', 'CE', 'PAS', 'PEP'] },
@@ -55,13 +55,13 @@ const BulkEditModal = ({ isOpen, onClose, selectedIds, type = 'estudiante', onSu
             { key: 'Cohorte_Egreso', label: 'Cohorte Egreso', type: 'text', placeholder: 'Ej: 2024-2' },
             { key: 'Fecha_Egreso', label: 'Fecha de Grado', type: 'date' }
         ],
-        'Retirado': [
+        'Desertor': [
             { key: 'Motivo_Estado', label: 'Motivo de Retiro', type: 'text', placeholder: 'Razón del retiro' }
         ],
-        'En Pausa': [
+        'Pausa': [
             { key: 'Motivo_Estado', label: 'Motivo de Pausa', type: 'text', placeholder: 'Razón de la pausa' }
         ],
-        'Reingreso': [
+        'Reingresado': [
             { key: 'Fecha_Reingreso', label: 'Fecha de Reingreso', type: 'date' },
             { key: 'Motivo_Estado', label: 'Respuesta/Resolución', type: 'text', placeholder: 'Nro de acta o resolución' }
         ]
@@ -72,7 +72,17 @@ const BulkEditModal = ({ isOpen, onClose, selectedIds, type = 'estudiante', onSu
     const extraFields = (fieldToEdit === 'Estado' && statusFields[newValue]) ? statusFields[newValue] : [];
 
     const handleSave = async () => {
-        if (!fieldToEdit || !newValue) return;
+        if (!fieldToEdit || !newValue) {
+            return toast.warning('Datos incompletos', 'Debe seleccionar un campo y un nuevo valor.');
+        }
+
+        // VALIDAR CAMPOS EXTRA (Si aplican)
+        if (extraFields.length > 0) {
+            const missing = extraFields.filter(ef => !additionalValues[ef.key]);
+            if (missing.length > 0) {
+                return toast.warning('Información requerida', `Faltan campos para el estado "${newValue}": ${missing.map(m => m.label).join(', ')}`);
+            }
+        }
 
         const result = await toast.confirm(
             '¿Confirmar edición masiva?',

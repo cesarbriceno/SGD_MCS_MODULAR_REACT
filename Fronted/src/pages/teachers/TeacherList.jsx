@@ -87,7 +87,8 @@ const TeacherList = () => {
         return { gradient: `bg-gradient-to-br ${gradients[index]}`, initials };
     };
 
-    const processedTeachers = useMemo(() => {
+    // 1. Mapeo de todos los docentes
+    const allMappedTeachers = useMemo(() => {
         return rawTeachers.map(t => {
             const getVal = (key) => t[key] || t[key.toLowerCase()] || t[key.toUpperCase()] || '';
             const status = getVal('Activo') === 'Sí' ? 'Activo' : 'Inactivo';
@@ -102,7 +103,12 @@ const TeacherList = () => {
                 folderUrl: getVal('URL_Carpeta_Drive'),
                 raw: t
             };
-        }).filter(teacher => {
+        });
+    }, [rawTeachers]);
+
+    // 2. Filtrado para la vista
+    const processedTeachers = useMemo(() => {
+        return allMappedTeachers.filter(teacher => {
             const searchLower = searchTerm.toLowerCase();
             return (
                 (teacher.nombre.toLowerCase().includes(searchLower) || (teacher.numDoc || '').toString().includes(searchLower)) &&
@@ -110,7 +116,7 @@ const TeacherList = () => {
                 (filterType === 'Todos' || teacher.tipoVinculacion === filterType)
             );
         });
-    }, [rawTeachers, searchTerm, filterStatus, filterType]);
+    }, [allMappedTeachers, searchTerm, filterStatus, filterType]);
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -330,7 +336,12 @@ const TeacherList = () => {
             </div>
 
             <BulkEditModal isOpen={isBulkModalOpen} onClose={() => setIsBulkModalOpen(false)} selectedIds={selectedIds} type="docente" onSuccess={() => { loadTeachers(); setSelectedIds(new Set()); }} />
-            <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} data={selectedIds.size > 0 ? processedTeachers.filter(t => selectedIds.has(t.id)) : processedTeachers} sourceName="Docentes" />
+            <ExportModal
+                isOpen={isExportModalOpen}
+                onClose={() => setIsExportModalOpen(false)}
+                data={selectedIds.size > 0 ? allMappedTeachers.filter(t => selectedIds.has(t.id)) : processedTeachers}
+                sourceName="Docentes"
+            />
         </div>
     );
 };

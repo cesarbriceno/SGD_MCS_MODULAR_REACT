@@ -16,13 +16,51 @@ import FolderExplorer from '../../components/common/FolderExplorer';
 
 // --- ESTILOS CSS (ORBES + GLASS + ANIMACIONES ICONOS) ---
 const styles = `
-  /* Local adjustments if needed */
-  .glass-section-header {
-    background: rgba(255, 255, 255, 0.4); border-radius: 1.5rem; padding: 1rem 1.5rem;
-    display: flex; align-items: center; justify-content: space-between;
-    cursor: pointer; transition: all 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.2);
+  .glass-card-premium {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 2rem;
+    box-shadow: 
+      0 10px 25px -5px rgba(0, 0, 0, 0.05),
+      0 8px 10px -6px rgba(0, 0, 0, 0.05),
+      inset 0 0 20px rgba(255, 255, 255, 0.5);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: visible;
   }
-  .dark .glass-section-header { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); }
+  .dark .glass-card-premium {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  }
+  .glass-card-premium:hover {
+    transform: translateY(-4px);
+    box-shadow: 
+      0 20px 25px -5px rgba(0, 0, 0, 0.08),
+      0 10px 10px -6px rgba(0, 0, 0, 0.08);
+  }
+  .premium-input {
+    background: white !important;
+    color: #1e293b !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+    caret-color: #3b82f6 !important;
+  }
+  .dark .premium-input {
+    background: rgba(15, 23, 42, 0.8) !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  .premium-input:focus {
+    background: white !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
+  }
+  .dark .premium-input:focus {
+    background: rgba(30, 41, 59, 0.9) !important;
+  }
 `;
 
 const StudentForm = () => {
@@ -148,6 +186,34 @@ const StudentForm = () => {
         if (isView) return;
         if (!validate()) return toast.warning('Datos incompletos', 'Faltan campos obligatorios');
 
+        // Mantener el estado original para la validación de transición
+        let originalStatus = 'Cursando';
+        if (isEdit && id) {
+            try {
+                const students = await api.students.list();
+                const found = students.find(s => String(s.ID_Estudiante) === String(id) || String(s.id) === String(id));
+                if (found) originalStatus = found.Estado || found.estado || 'Cursando';
+            } catch (e) { console.error("Error fetching original status:", e); }
+        }
+
+        const newStatus = formData.Estado;
+
+        // --- VALIDACIÓN DE TRANSICIONES ---
+        if (isEdit && originalStatus !== newStatus) {
+            const allowedTransitions = {
+                'Cursando': ['Egresado', 'Desertor', 'Pausa'],
+                'Desertor': ['Reingresado'],
+                'Pausa': ['Reingresado'],
+                'Reingresado': ['Egresado', 'Desertor', 'Pausa'],
+                'Egresado': [] // Estado final
+            };
+
+            const allowed = allowedTransitions[originalStatus] || [];
+            if (!allowed.includes(newStatus)) {
+                return toast.error('Transición no permitida', `No se puede cambiar de ${originalStatus} a ${newStatus} directamente.`);
+            }
+        }
+
         setLoading(true);
         try {
             const cleanData = Object.fromEntries(Object.entries(formData).filter(([_, v]) => v !== null));
@@ -170,7 +236,8 @@ const StudentForm = () => {
                 ? await api.students.update(id, { ...cleanData, Ultima_Actualizacion: timestamp, _createFolder: !formData.URL_Carpeta_Drive && createFolder })
                 : await api.students.create({ ...cleanData, ID_Estudiante: finalId, Fecha_Registro: timestamp, Ultima_Actualizacion: timestamp, _createFolder: createFolder });
 
-            if (response.success || response.id) {
+            // El backend puede devolver {success: true, ...} o simplemente el objeto creado/actualizado
+            if (response && (response.success || response.id || response.ID_Estudiante || typeof response === 'object')) {
                 addNotification(
                     isEdit ? 'Estudiante actualizado' : 'Nuevo estudiante',
                     `${formData.Nombre1} ${formData.Apellido1} ha sido ${isEdit ? 'actualizado' : 'registrado'} correctamente.`,
@@ -179,7 +246,7 @@ const StudentForm = () => {
                 toast.success('Guardado', 'Registro procesado exitosamente');
                 navigate('/students');
             } else {
-                throw new Error(response.message);
+                throw new Error('Respuesta del servidor no válida');
             }
         } catch (error) {
             toast.error('Error', 'No se pudieron guardar los cambios');
@@ -191,11 +258,11 @@ const StudentForm = () => {
     const isDisabled = isView || loading;
 
     const stateConfig = {
-        'Cursando': { color: 'text-emerald-600 dark:text-emerald-400', icon: CheckCircle, label: 'Activo' },
+        'Cursando': { color: 'text-emerald-600 dark:text-emerald-400', icon: CheckCircle, label: 'Cursando' },
         'Egresado': { color: 'text-indigo-600 dark:text-indigo-400', icon: GraduationCap, label: 'Egresado' },
-        'En Pausa': { color: 'text-amber-600 dark:text-amber-400', icon: PauseCircle, label: 'Pausa' },
-        'Retirado': { color: 'text-red-600 dark:text-red-400', icon: XCircle, label: 'Retirado' },
-        'Reingreso': { color: 'text-blue-600 dark:text-blue-400', icon: RefreshCw, label: 'Reingreso' }
+        'Pausa': { color: 'text-amber-600 dark:text-amber-400', icon: PauseCircle, label: 'En Pausa' },
+        'Desertor': { color: 'text-red-600 dark:text-red-400', icon: XCircle, label: 'Desertor' },
+        'Reingresado': { color: 'text-blue-600 dark:text-blue-400', icon: RefreshCw, label: 'Reingresado' }
     };
     const currentState = stateConfig[formData.Estado] || stateConfig['Cursando'];
     const StateIcon = currentState.icon;
@@ -301,7 +368,7 @@ const StudentForm = () => {
                     >
                         <InputGroup label="Cohorte Ingreso" name="Cohorte_Ingreso" required value={formData.Cohorte_Ingreso} onChange={handleChange} disabled={isDisabled} placeholder="Ej: 2024-1" icon={Calendar} />
                         <InputGroup label="Fecha Ingreso" name="Fecha_Ingreso" type="date" value={formData.Fecha_Ingreso} onChange={handleChange} disabled={isDisabled} icon={Calendar} />
-                        <InputGroup label="Estado" name="Estado" options={['Cursando', 'Egresado', 'En Pausa', 'Retirado', 'Reingreso']} value={formData.Estado} onChange={handleChange} disabled={isDisabled} icon={Briefcase} />
+                        <InputGroup label="Estado" name="Estado" options={['Cursando', 'Egresado', 'Pausa', 'Desertor', 'Reingresado']} value={formData.Estado} onChange={handleChange} disabled={isDisabled} icon={Briefcase} />
 
                         {formData.Estado === 'Egresado' && (
                             <>
@@ -309,12 +376,24 @@ const StudentForm = () => {
                                 <InputGroup label="F. Grado" name="Fecha_Egreso" type="date" required value={formData.Fecha_Egreso} onChange={handleChange} disabled={isDisabled} icon={Calendar} />
                             </>
                         )}
-                        {(formData.Estado === 'Retirado' || formData.Estado === 'En Pausa') && (
-                            <div className="md:col-span-2">
-                                <InputGroup label="Motivo" name="Motivo_Estado" required value={formData.Motivo_Estado} onChange={handleChange} disabled={isDisabled} placeholder="Describa la razón..." icon={AlertCircle} />
-                            </div>
+                        {(formData.Estado === 'Desertor' || formData.Estado === 'Pausa') && (
+                            <>
+                                <div className="md:col-span-2">
+                                    <InputGroup label="Motivo" name="Motivo_Estado" required value={formData.Motivo_Estado} onChange={handleChange} disabled={isDisabled} placeholder="Describa la razón..." icon={AlertCircle} />
+                                </div>
+                                <InputGroup
+                                    label={formData.Estado === 'Desertor' ? "Fecha Retiro" : "Fecha Pausa"}
+                                    name={formData.Estado === 'Desertor' ? "Fecha_Retiro" : "Fecha_Pausa"}
+                                    type="date"
+                                    required
+                                    value={formData.Estado === 'Desertor' ? formData.Fecha_Retiro : formData.Fecha_Pausa}
+                                    onChange={handleChange}
+                                    disabled={isDisabled}
+                                    icon={Calendar}
+                                />
+                            </>
                         )}
-                        {formData.Estado === 'Reingreso' && (
+                        {formData.Estado === 'Reingresado' && (
                             <>
                                 <InputGroup label="F. Reingreso" name="Fecha_Reingreso" type="date" value={formData.Fecha_Reingreso} onChange={handleChange} disabled={isDisabled} icon={Calendar} />
                                 <InputGroup label="Resolución" name="Motivo_Estado" value={formData.Motivo_Estado} onChange={handleChange} disabled={isDisabled} placeholder="Nro acta..." icon={FileText} />
@@ -401,6 +480,7 @@ const StudentForm = () => {
                             <textarea
                                 name="Comentarios"
                                 value={formData.Comentarios}
+                                title={formData.Comentarios}
                                 onChange={handleChange}
                                 disabled={isDisabled}
                                 rows="3"
@@ -475,7 +555,7 @@ const InputGroup = ({ label, name, value, onChange, options, type = "text", requ
                         </div>
                     )}
                     <input
-                        type={type} name={name} value={value} onChange={onChange} disabled={disabled} placeholder={placeholder}
+                        type={type} name={name} value={value} title={value} onChange={onChange} disabled={disabled} placeholder={placeholder}
                         className={`w-full ${Icon ? 'pl-12' : 'pl-4'} pr-4 py-3 rounded-xl premium-input outline-none shadow-sm
                             ${error ? 'border-red-500/50 text-red-500 placeholder-red-300' : ''}
                             ${disabled ? 'opacity-60 cursor-not-allowed' : ''}

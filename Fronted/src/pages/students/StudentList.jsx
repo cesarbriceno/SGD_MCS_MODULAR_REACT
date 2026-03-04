@@ -4,7 +4,7 @@ import {
     Plus, Search, User, Eye, Edit, Trash2,
     X, CheckSquare, Square, SlidersHorizontal,
     MessageCircle, ChevronLeft, ChevronRight, FileSpreadsheet,
-    Check, ChevronDown,
+    Check, ChevronDown, Pause, XCircle, RotateCcw,
     CalendarPlus, GraduationCap, Ban, Download, FolderOpen
 } from 'lucide-react';
 import { api } from '../../services/api';
@@ -129,12 +129,17 @@ const StudentList = () => {
         return [...new Set(cohorts)].sort().reverse();
     }, [rawStudents]);
 
-    const processedStudents = useMemo(() => {
+    // 1. Mapeo de todos los estudiantes al formato de visualización/exportación
+    const allMappedStudents = useMemo(() => {
         return rawStudents.map(s => {
             const getVal = (key) => s[key] || s[key.toLowerCase()] || s[key.toUpperCase()] || '';
             let rawState = getVal('Estado');
             if (['Matriculado', 'Cursando', 'Activo'].includes(rawState)) rawState = 'Cursando';
             if (['Graduado', 'Egresado', 'Titulado'].includes(rawState)) rawState = 'Egresado';
+            if (['Retirado', 'Desertor'].includes(rawState)) rawState = 'Desertor';
+            if (['Suspendido', 'Pausa'].includes(rawState)) rawState = 'Pausa';
+            if (['Reingreso', 'Reingresado'].includes(rawState)) rawState = 'Reingresado';
+
 
             return {
                 id: getVal('ID_Estudiante') || `temp-${Math.random()}`,
@@ -149,7 +154,12 @@ const StudentList = () => {
                 folderUrl: getVal('URL_Carpeta_Drive'),
                 raw: s
             };
-        }).filter(student => {
+        });
+    }, [rawStudents]);
+
+    // 2. Filtrado para la vista de tabla
+    const processedStudents = useMemo(() => {
+        return allMappedStudents.filter(student => {
             const searchLower = searchTerm.toLowerCase();
             return (
                 ((student.nombre || '').toLowerCase().includes(searchLower) || (student.numDoc || '').toString().includes(searchLower)) &&
@@ -158,7 +168,7 @@ const StudentList = () => {
                 (filterDocType === 'Todos' || student.tipoDoc === filterDocType)
             );
         });
-    }, [rawStudents, searchTerm, filterStatus, filterCohort, filterDocType]);
+    }, [allMappedStudents, searchTerm, filterStatus, filterCohort, filterDocType]);
 
     // PAGINACIÓN
     const indexOfLastItem = currentPage * itemsPerPage;
@@ -190,14 +200,22 @@ const StudentList = () => {
         const badgeStyles = {
             'Cursando': 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
             'Egresado': 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
-            'En Pausa': 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-            'Retirado': 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+            'Pausa': 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+            'Desertor': 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+            'Reingresado': 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
         };
-        const dotColors = { 'Cursando': 'bg-emerald-500', 'Egresado': 'bg-indigo-500', 'En Pausa': 'bg-amber-500', 'Retirado': 'bg-red-500' };
+        const dotColors = { 'Cursando': 'bg-emerald-500', 'Egresado': 'bg-indigo-500', 'Pausa': 'bg-amber-500', 'Desertor': 'bg-red-500', 'Reingresado': 'bg-blue-500' };
+        const icons = {
+            'Cursando': <Check size={10} strokeWidth={3} />,
+            'Egresado': <GraduationCap size={12} strokeWidth={2} />,
+            'Pausa': <Pause size={10} strokeWidth={3} />,
+            'Desertor': <XCircle size={10} strokeWidth={3} />,
+            'Reingresado': <RotateCcw size={10} strokeWidth={3} />,
+        };
 
         return (
             <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border inline-flex items-center gap-1.5 ${badgeStyles[status] || 'bg-slate-100 text-slate-600'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${dotColors[status] || 'bg-slate-400'}`}></span>
+                {icons[status] || <span className={`w-1.5 h-1.5 rounded-full ${dotColors[status] || 'bg-slate-400'}`}></span>}
                 {status}
             </span>
         );
@@ -251,7 +269,7 @@ const StudentList = () => {
             <ExportModal
                 isOpen={isExportModalOpen}
                 onClose={() => setIsExportModalOpen(false)}
-                data={selectedIds.size > 0 ? processedStudents.filter(s => selectedIds.has(s.id)) : processedStudents}
+                data={selectedIds.size > 0 ? allMappedStudents.filter(s => selectedIds.has(s.id)) : processedStudents}
                 sourceName="Estudiantes"
             />
             <BulkEditModal
@@ -304,7 +322,7 @@ const StudentList = () => {
                     </div>
                     {showFilters && (
                         <div className="p-4 mt-2 border-t border-slate-200/50 dark:border-white/10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 animate-in slide-in-from-top-2">
-                            <FilterSelect label="Estado" value={filterStatus} onChange={setFilterStatus} options={['Todos', 'Cursando', 'Egresado', 'En Pausa', 'Retirado']} />
+                            <FilterSelect label="Estado" value={filterStatus} onChange={setFilterStatus} options={['Todos', 'Cursando', 'Egresado', 'Pausa', 'Desertor', 'Reingresado']} />
                             <FilterSelect label="Cohorte" value={filterCohort} onChange={setFilterCohort} options={['Todos', ...uniqueCohorts]} />
                             <FilterSelect label="Documento" value={filterDocType} onChange={setFilterDocType} options={['Todos', 'CC', 'TI', 'CE', 'PAS']} />
                             <div className="flex items-end">

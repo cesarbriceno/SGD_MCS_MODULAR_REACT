@@ -97,6 +97,7 @@ const KpiCard = ({ title, value, subtext, icon: Icon, colorClass }) => (
 
 export const StudentsModule = ({ data }) => {
     const { students = [] } = data || {};
+    const [viewMode, setViewMode] = useState('semester'); // 'semester' o 'year'
     const isDark = useDarkMode(); // Observamos los cambios de tema
     const chartTextColor = isDark ? '#cbd5e1' : '#475569'; // Slate-300 vs Slate-600
     const gridColor = isDark ? '#334155' : '#e2e8f0';
@@ -135,8 +136,10 @@ export const StudentsModule = ({ data }) => {
             }
             if (s.sit_lab && s.sit_lab.toLowerCase().includes('emplead')) trabajando++;
 
-            // Semestre / Estado
-            const c = s.cohorte || 'Desconocida';
+            // Semestre o Año / Estado
+            const fullCohorte = s.cohorte || 'Desconocida';
+            const c = viewMode === 'year' ? (fullCohorte !== 'Desconocida' ? fullCohorte.substring(0, 4) : 'Desconocida') : fullCohorte;
+
             if (!cohorteEstado[c]) cohorteEstado[c] = { Activo: 0, Graduado: 0, Retirado: 0 };
 
             let estadoG = 'Activo';
@@ -244,7 +247,7 @@ export const StudentsModule = ({ data }) => {
                 sectorLab
             }
         };
-    }, [students]);
+    }, [students, viewMode]);
 
     // Función para descargar la tarjeta completa (Gráfico + Análisis)
     const downloadCard = async (id, title) => {
@@ -427,31 +430,32 @@ export const StudentsModule = ({ data }) => {
         const grads = metrics.charts.metricasCohortes.graduados;
         const totals = metrics.charts.metricasCohortes.total;
         const desercs = metrics.charts.metricasCohortes.desercion;
+        const unit = viewMode === 'year' ? 'año' : 'semestre';
 
         if (!categories || categories.length === 0) return {};
 
         // Permanencia
         const lastPerm = perms[perms.length - 1];
         const prevPerm = perms.length > 1 ? perms[perms.length - 2] : null;
-        let permText = `El semestre más reciente (${categories[categories.length - 1]}) presenta una permanencia del ${lastPerm}%. `;
+        let permText = `El ${unit} más reciente (${categories[categories.length - 1]}) presenta una permanencia del ${lastPerm}%. `;
         if (prevPerm !== null) {
-            permText += lastPerm > prevPerm ? `Se observa una mejora respecto al semestre anterior (${prevPerm}%).` : (lastPerm < prevPerm ? `Se observa una disminución respecto al semestre anterior (${prevPerm}%).` : `Se mantiene estable comparado con el semestre anterior.`);
+            permText += lastPerm > prevPerm ? `Se observa una mejora respecto al ${unit} anterior (${prevPerm}%).` : (lastPerm < prevPerm ? `Se observa una disminución respecto al ${unit} anterior (${prevPerm}%).` : `Se mantiene estable comparado con el ${unit} anterior.`);
         }
 
         // Graduados
         const maxGradIdx = grads.indexOf(Math.max(...grads));
         const maxGradVal = grads[maxGradIdx];
-        const gradText = maxGradVal > 0 ? `El semestre ${categories[maxGradIdx]} destaca con la mayor tasa de graduados (${maxGradVal}%). Los semestres recientes muestran porcentajes bajos o nulos debido a que aún se encuentran en curso.` : `Aún no se registran graduados significativos en las cohortes listadas.`;
+        const gradText = maxGradVal > 0 ? `El ${unit} ${categories[maxGradIdx]} destaca con la mayor tasa de graduados (${maxGradVal}%). Los períodos recientes muestran porcentajes bajos o nulos debido a que aún se encuentran en curso.` : `Aún no se registran graduados significativos en las cohortes listadas.`;
 
         // Estudiantes (Matrícula)
         const maxTotalIdx = totals.indexOf(Math.max(...totals));
         const avgTotal = Math.round(totals.reduce((a, b) => a + b, 0) / totals.length);
-        const totalText = `El volumen promedio de ingresos ha sido de ${avgTotal} estudiantes por semestre. El pico de admisión histórico fue en ${categories[maxTotalIdx]} con ${totals[maxTotalIdx]} estudiantes inscritos.`;
+        const totalText = `El volumen promedio de ingresos ha sido de ${avgTotal} estudiantes por ${unit}. El pico de admisión histórico fue en ${categories[maxTotalIdx]} con ${totals[maxTotalIdx]} estudiantes inscritos.`;
 
         // Deserción
         const maxDesIdx = desercs.indexOf(Math.max(...desercs));
         const minDesIdx = desercs.indexOf(Math.min(...desercs));
-        const desText = Math.max(...desercs) > 0 ? `La deserción más crítica se registró en el semestre ${categories[maxDesIdx]} con un ${desercs[maxDesIdx]}%. En contraste, el semestre ${categories[minDesIdx]} presentó la tasa más baja (${desercs[minDesIdx]}%), lo que sugiere un mejor desempeño retentivo en este último.` : `No se registran tasas notables de deserción en los semestres evaluados.`;
+        const desText = Math.max(...desercs) > 0 ? `La deserción más crítica se registró en el ${unit} ${categories[maxDesIdx]} con un ${desercs[maxDesIdx]}%. En contraste, el ${unit} ${categories[minDesIdx]} presentó la tasa más baja (${desercs[minDesIdx]}%), lo que sugiere un mejor desempeño retentivo en este último.` : `No se registran tasas notables de deserción en los períodos evaluados.`;
 
         // Evolucion Ingresos (Apiladas)
         const categoriasEstado = metrics.charts.cohorteEstado;
@@ -463,7 +467,7 @@ export const StudentsModule = ({ data }) => {
         });
         const estadoMayor = Math.max(activosTotal, graduadosTotal, retiradosTotal);
         const tipoMayor = estadoMayor === activosTotal ? 'Activos' : (estadoMayor === graduadosTotal ? 'Graduados' : 'Retirados');
-        const evoText = `Históricamente, la mayor proporción de estudiantes se encuentra en estado '${tipoMayor}' con un total de ${estadoMayor} estudiantes sumando todas las cohortes analizadas.`;
+        const evoText = `Históricamente, la mayor proporción de estudiantes se encuentra en estado '${tipoMayor}' con un total de ${estadoMayor} estudiantes sumando todos los períodos analizados.`;
 
         // Tiempos Grado
         const tgData = metrics.charts.boxplotData[0]?.y;
@@ -550,19 +554,43 @@ export const StudentsModule = ({ data }) => {
                 }
             `}} />
 
-            {/* Cabecera del Módulo con Botón de Exportación */}
-            <div className="flex justify-between items-center mb-6">
+            {/* Cabecera del Módulo con Botón de Exportación y Conmutador de Vista */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div>
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Panel de Estudiantes y Egresados</h2>
                     <p className="text-sm text-slate-500 dark:text-slate-400">Análisis detallado de retención, inserción y graduación</p>
                 </div>
-                <button
-                    onClick={() => window.print()}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl shadow-sm transition-colors text-sm font-medium print:hidden"
-                >
-                    <FileDown className="w-4 h-4" />
-                    Exportar Reporte
-                </button>
+                <div className="flex items-center gap-3 print:hidden w-full md:w-auto">
+                    {/* Toggle Semestre/Año */}
+                    <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-xl border border-slate-200 dark:border-slate-600 grow md:grow-0">
+                        <button
+                            onClick={() => setViewMode('semester')}
+                            className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${viewMode === 'semester'
+                                ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                                }`}
+                        >
+                            Por Semestre
+                        </button>
+                        <button
+                            onClick={() => setViewMode('year')}
+                            className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${viewMode === 'year'
+                                ? 'bg-white dark:bg-slate-600 text-primary dark:text-white shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                                }`}
+                        >
+                            Por Año
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl shadow-sm transition-colors text-sm font-medium"
+                    >
+                        <FileDown className="w-4 h-4" />
+                        Exportar Reporte
+                    </button>
+                </div>
             </div>
 
             {/* 1. KPIs */}
@@ -578,10 +606,10 @@ export const StudentsModule = ({ data }) => {
 
                 {/* PERMANENCIA */}
                 <div className="relative bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col" id="card-permanencia">
-                    <button onClick={() => downloadCard('card-permanencia', 'Permanencia_Semestral')} className="absolute top-4 right-4 text-slate-400 hover:text-primary transition-colors print:hidden" title="Descargar Gráfico y Análisis">
+                    <button onClick={() => downloadCard('card-permanencia', `Permanencia_${viewMode === 'year' ? 'Anual' : 'Semestral'}`)} className="absolute top-4 right-4 text-slate-400 hover:text-primary transition-colors print:hidden" title="Descargar Gráfico y Análisis">
                         <Download className="w-5 h-5" />
                     </button>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 uppercase text-center">% DE PERMANENCIA POR SEMESTRE</h3>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 uppercase text-center">% DE PERMANENCIA POR {viewMode === 'year' ? 'AÑO' : 'SEMESTRE'}</h3>
                     <Chart options={permanenciaOptions} series={[{ name: 'Permanencia', data: metrics.charts.metricasCohortes.permanencia }]} type="area" height={300} />
                     <details className="mt-4 group border border-slate-200 dark:border-slate-600 rounded-lg open:bg-slate-50 dark:open:bg-slate-700/30 transition-all">
                         <summary className="cursor-pointer font-semibold text-sm text-slate-700 dark:text-slate-300 p-3 flex justify-between items-center select-none bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 rounded-lg group-open:rounded-b-none">
@@ -602,7 +630,7 @@ export const StudentsModule = ({ data }) => {
                     <button onClick={() => downloadCard('card-graduados', 'Graduados_Semestral')} className="absolute top-4 right-4 text-slate-400 hover:text-primary transition-colors print:hidden" title="Descargar Gráfico y Análisis">
                         <Download className="w-5 h-5" />
                     </button>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 uppercase text-center">% DE GRADUADOS</h3>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 uppercase text-center">% DE GRADUADOS POR {viewMode === 'year' ? 'AÑO' : 'SEMESTRE'}</h3>
                     <Chart options={graduadosOptions} series={[{ name: 'Graduados', data: metrics.charts.metricasCohortes.graduados }]} type="line" height={300} />
                     <details className="mt-4 group border border-slate-200 dark:border-slate-600 rounded-lg open:bg-slate-50 dark:open:bg-slate-700/30 transition-all">
                         <summary className="cursor-pointer font-semibold text-sm text-slate-700 dark:text-slate-300 p-3 flex justify-between items-center select-none bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 rounded-lg group-open:rounded-b-none">
@@ -623,7 +651,7 @@ export const StudentsModule = ({ data }) => {
                     <button onClick={() => downloadCard('card-estudiantes', 'Estudiantes_Semestral')} className="absolute top-4 right-4 text-slate-400 hover:text-primary transition-colors print:hidden" title="Descargar Gráfico y Análisis">
                         <Download className="w-5 h-5" />
                     </button>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 uppercase text-center">Nº ESTUDIANTES POR SEMESTRE</h3>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 uppercase text-center">Nº ESTUDIANTES POR {viewMode === 'year' ? 'AÑO' : 'SEMESTRE'}</h3>
                     <Chart options={numEstudiantesOptions} series={[{ name: 'Estudiantes', data: metrics.charts.metricasCohortes.total }]} type="bar" height={300} />
                     <details className="mt-4 group border border-slate-200 dark:border-slate-600 rounded-lg open:bg-slate-50 dark:open:bg-slate-700/30 transition-all">
                         <summary className="cursor-pointer font-semibold text-sm text-slate-700 dark:text-slate-300 p-3 flex justify-between items-center select-none bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 rounded-lg group-open:rounded-b-none">
@@ -644,7 +672,7 @@ export const StudentsModule = ({ data }) => {
                     <button onClick={() => downloadCard('card-desercion', 'Desercion_Semestral')} className="absolute top-4 right-4 text-slate-400 hover:text-primary transition-colors print:hidden" title="Descargar Gráfico y Análisis">
                         <Download className="w-5 h-5" />
                     </button>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 uppercase text-center">% DE DESERCIÓN</h3>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 uppercase text-center">% DE DESERCIÓN POR {viewMode === 'year' ? 'AÑO' : 'SEMESTRE'}</h3>
                     <Chart options={desercionOptions} series={[{ name: 'Deserción', data: metrics.charts.metricasCohortes.desercion }]} type="line" height={300} />
                     <details className="mt-4 group border border-slate-200 dark:border-slate-600 rounded-lg open:bg-slate-50 dark:open:bg-slate-700/30 transition-all">
                         <summary className="cursor-pointer font-semibold text-sm text-slate-700 dark:text-slate-300 p-3 flex justify-between items-center select-none bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 rounded-lg group-open:rounded-b-none">
@@ -669,7 +697,7 @@ export const StudentsModule = ({ data }) => {
                     <table className="w-full text-left border-collapse text-sm">
                         <thead className="bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-600">
                             <tr>
-                                <th className="p-3 font-semibold text-center whitespace-nowrap">Semestre</th>
+                                <th className="p-3 font-semibold text-center whitespace-nowrap">{viewMode === 'year' ? 'Año' : 'Semestre'}</th>
                                 <th className="p-3 font-semibold text-center whitespace-nowrap">Admitidos (Nº)</th>
                                 <th className="p-3 font-semibold text-center whitespace-nowrap">% Permanencia</th>
                                 <th className="p-3 font-semibold text-center whitespace-nowrap">% Graduados</th>
@@ -683,17 +711,17 @@ export const StudentsModule = ({ data }) => {
                                         <td className="p-3 text-slate-800 dark:text-slate-200 font-medium text-center">{cat}</td>
                                         <td className="p-3 text-slate-600 dark:text-slate-400 text-center">{metrics.charts.metricasCohortes.total[idx]}</td>
                                         <td className="p-3 text-center">
-                                            <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-1 rounded font-semibold">
+                                            <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-1 rounded font-semibold text-xs">
                                                 {metrics.charts.metricasCohortes.permanencia[idx]}%
                                             </span>
                                         </td>
                                         <td className="p-3 text-center">
-                                            <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 px-2 py-1 rounded font-semibold">
+                                            <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 px-2 py-1 rounded font-semibold text-xs">
                                                 {metrics.charts.metricasCohortes.graduados[idx]}%
                                             </span>
                                         </td>
                                         <td className="p-3 text-center">
-                                            <span className="bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 px-2 py-1 rounded font-semibold">
+                                            <span className="bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 px-2 py-1 rounded font-semibold text-xs">
                                                 {metrics.charts.metricasCohortes.desercion[idx]}%
                                             </span>
                                         </td>
@@ -712,10 +740,10 @@ export const StudentsModule = ({ data }) => {
             {/* 3. Evolución detallada de Semestres (Ingreso) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="relative bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col" id="card-evolucion">
-                    <button onClick={() => downloadCard('card-evolucion', 'Evolucion_Ingresos')} className="absolute top-4 right-4 text-slate-400 hover:text-primary transition-colors print:hidden" title="Descargar Gráfico y Análisis">
+                    <button onClick={() => downloadCard('card-evolucion', `Evolucion_Ingresos_${viewMode === 'year' ? 'Anual' : 'Semestral'}`)} className="absolute top-4 right-4 text-slate-400 hover:text-primary transition-colors print:hidden" title="Descargar Gráfico y Análisis">
                         <Download className="w-5 h-5" />
                     </button>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Evolución de Semestres (Ingreso)</h3>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 uppercase text-center">Evolución de {viewMode === 'year' ? 'Años' : 'Semestres'} (Ingreso)</h3>
                     <Chart options={apiladasOptions} series={apiladasSeries} type="bar" height={300} />
                     <details className="mt-4 group border border-slate-200 dark:border-slate-600 rounded-lg open:bg-slate-50 dark:open:bg-slate-700/30 transition-all">
                         <summary className="cursor-pointer font-semibold text-sm text-slate-700 dark:text-slate-300 p-3 flex justify-between items-center select-none bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 rounded-lg group-open:rounded-b-none">

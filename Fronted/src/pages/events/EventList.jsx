@@ -73,7 +73,7 @@ const EventList = () => {
     const [filterAlcance, setFilterAlcance] = useState('Todos');
     const [filterModalidad, setFilterModalidad] = useState('Todos');
 
-    const [showFilters, setShowFilters] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(new Set());
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
     useEffect(() => { loadEvents(); }, []);
@@ -105,7 +105,24 @@ const EventList = () => {
         }
     };
 
-    const processedEvents = useMemo(() => {
+    const handleBulkDelete = async () => {
+        const result = await toast.confirm('¿Eliminar seleccionados?', `Se eliminarán ${selectedIds.size} eventos.`);
+        if (result.isConfirmed) {
+            try {
+                const idsArray = Array.from(selectedIds);
+                setRawEvents(prev => prev.filter(e => !selectedIds.has(e.ID_Evento || e.id)));
+                setSelectedIds(new Set());
+                await api.events.bulkDelete(idsArray);
+                toast.success('¡Completado!', `Se eliminaron ${idsArray.length} registros.`);
+            } catch (error) {
+                toast.error('Error', 'No se pudo completar la acción.');
+                loadEvents();
+            }
+        }
+    };
+
+    // 1. Mapeo de todos los eventos
+    const allMappedEvents = useMemo(() => {
         return rawEvents.map(e => {
             const getVal = (key) => e[key] || e[key.toLowerCase()] || e[key.toUpperCase()] || '';
             return {
@@ -120,7 +137,12 @@ const EventList = () => {
                 folderUrl: getVal('URL_Carpeta_Drive'),
                 raw: e
             };
-        }).filter(ev => {
+        });
+    }, [rawEvents]);
+
+    // 2. Filtrado para la vista
+    const processedEvents = useMemo(() => {
+        return allMappedEvents.filter(ev => {
             const searchLower = searchTerm.toLowerCase();
             return (
                 (ev.nombre.toLowerCase().includes(searchLower) || ev.lugar.toLowerCase().includes(searchLower)) &&
@@ -129,16 +151,56 @@ const EventList = () => {
                 (filterModalidad === 'Todos' || ev.modalidad === filterModalidad)
             );
         });
-    }, [rawEvents, searchTerm, filterType, filterAlcance, filterModalidad]);
+    }, [allMappedEvents, searchTerm, filterType, filterAlcance, filterModalidad]);
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentItems = processedEvents.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(processedEvents.length / itemsPerPage);
 
+    const toggleSelectAll = () => {
+        const currentIds = currentItems.map(e => e.id);
+        const allSelected = currentIds.length > 0 && currentIds.every(id => selectedIds.has(id));
+
+        const newSet = new Set(selectedIds);
+        if (allSelected) {
+            currentIds.forEach(id => newSet.delete(id));
+        } else {
+            currentIds.forEach(id => newSet.add(id));
+        }
+        setSelectedIds(newSet);
+    };
+
+    const toggleSelectOne = (id) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedIds(newSet);
+    };
+
     return (
         <div className="animate-fade-in relative pb-32 pt-6 px-4 md:px-8">
             <style>{styles}</style>
+
+            {/* DOCK FLOTANTE */}
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-bottom-10 fade-in duration-300">
+                    <div className="bg-white dark:bg-slate-800 px-6 py-3 rounded-2xl flex items-center gap-6 shadow-2xl border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center gap-3 text-slate-800 dark:text-white font-bold">
+                            <span className="text-xs uppercase tracking-widest">{selectedIds.size} seleccionados</span>
+                        </div>
+                        <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+                        <div className="flex gap-2">
+                            <button onClick={handleBulkDelete} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-black uppercase shadow-md shadow-red-500/20 transition-all">
+                                Eliminar
+                            </button>
+                            <button onClick={() => setSelectedIds(new Set())} className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* HEADER */}
             <div className="flex flex-col lg:flex-row justify-between items-end gap-4 mb-8">
@@ -167,6 +229,9 @@ const EventList = () => {
                             className="w-full pl-12 pr-4 py-2.5 rounded-xl apple-search outline-none text-sm font-medium"
                         />
                     </div>
+                    <button onClick={toggleSelectAll} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/5 transition-all">
+                        {currentItems.length > 0 && currentItems.every(e => selectedIds.has(e.id)) ? "Deseleccionar" : "Seleccionar Todo"}
+                    </button>
                     <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${showFilters ? 'bg-green-500/10 text-green-600' : 'text-slate-600 hover:bg-black/5'}`}>
                         <SlidersHorizontal size={18} /> Filtros
                     </button>
@@ -189,8 +254,11 @@ const EventList = () => {
                     <div className="col-span-full p-20 text-center glass-panel rounded-3xl text-slate-400 font-bold uppercase tracking-widest">Sin eventos encontrados</div>
                 ) : (
                     currentItems.map((event) => (
-                        <div key={event.id} className="glass-row p-6 rounded-3xl flex flex-col sm:flex-row gap-6 items-start relative overflow-hidden group">
+                        <div key={event.id} onClick={() => toggleSelectOne(event.id)} className={`glass-row p-6 rounded-3xl flex flex-col sm:flex-row gap-6 items-start relative overflow-hidden group cursor-pointer ${selectedIds.has(event.id) ? 'ring-2 ring-green-500 !bg-green-50 dark:!bg-green-900/10' : ''}`}>
                             <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-green-500"></div>
+                            {selectedIds.has(event.id) && (
+                                <div className="absolute top-4 right-4 bg-green-500 text-white p-1 rounded-full"><Plus size={14} className="rotate-45" /></div>
+                            )}
                             <div className="flex-1 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
@@ -208,7 +276,7 @@ const EventList = () => {
                                     <div className="flex items-center gap-2"><Calendar size={14} className="text-green-400" /> {event.fechaInicio}</div>
                                 </div>
                             </div>
-                            <div className="flex sm:flex-col gap-2 w-full sm:w-auto mt-2 sm:mt-0 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                            <div onClick={(e) => e.stopPropagation()} className="flex sm:flex-col gap-2 w-full sm:w-auto mt-2 sm:mt-0 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
                                 {event.folderUrl && (
                                     <a href={event.folderUrl} target="_blank" rel="noopener noreferrer" className="flex-1 p-2.5 bg-slate-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-600 rounded-xl transition-all flex justify-center" title="Ver Carpeta de Drive">
                                         <FolderOpen size={20} />
@@ -232,7 +300,7 @@ const EventList = () => {
                 </div>
             )}
 
-            <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} data={processedEvents} sourceName="Eventos" />
+            <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} data={selectedIds.size > 0 ? allMappedEvents.filter(e => selectedIds.has(e.id)) : processedEvents} sourceName="Eventos" />
         </div>
     );
 };
