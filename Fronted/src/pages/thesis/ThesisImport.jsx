@@ -8,7 +8,6 @@ import * as XLSX from 'xlsx';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
-import { generateId, findNextSequence } from '../../utils/idGenerator';
 
 const styles = `
   .glass-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 2rem; }
@@ -55,6 +54,7 @@ const ThesisImport = () => {
     const [validationReport, setValidationReport] = useState(null);
     const [importProgress, setImportProgress] = useState({ current: 0, total: 0, status: 'idle' });
     const [showOnlyErrors, setShowOnlyErrors] = useState(false);
+    const [createFolders, setCreateFolders] = useState(true);
 
     const REQUIRED_FIELDS = ["Titulo_Investigacion", "Año", "Estado_Tesis", "ID_Estudiante", "ID_Asesor"];
     const THESIS_FIELDS = [
@@ -242,20 +242,6 @@ const ThesisImport = () => {
         const year = now.getFullYear();
         const month = now.getMonth() + 1;
 
-        // Fetch existing data for sequence calculation
-        let existingStudents = [];
-        let existingAdvisors = [];
-        let existingThesis = [];
-        try {
-            existingStudents = await api.students.list();
-            existingAdvisors = await api.teachers.list();
-            existingThesis = await api.thesis.list();
-        } catch (e) { console.error("Error fetching data for sequences", e); }
-
-        let nextThesisSeq = findNextSequence('TES', existingThesis.map(t => t.ID_Tesis || t.id), year, month);
-        let nextStudentSeq = findNextSequence('EST', existingStudents.map(s => s.ID_Estudiante || s.id), year, month);
-        let nextAdvisorSeq = findNextSequence('DOC', existingAdvisors.map(d => d.ID_Docente || d.id), year, month);
-
         for (let i = 0; i < validRows.length; i++) {
             const row = { ...validRows[i] };
             const timestamp = now.toLocaleString();
@@ -264,16 +250,16 @@ const ThesisImport = () => {
                 let finalStudentId = row.ID_Estudiante;
                 if (row._needsStudent) {
                     const studentData = {
-                        ID_Estudiante: generateId('EST', { year, month, sequence: nextStudentSeq++ }),
                         Nombre1: row.Nombre_Estudiante || row.Nombre1_Estudiante,
                         Apellido1: row.Apellido_Estudiante || row.Apellido1_Estudiante || '-',
                         Cedula: row.Cedula_Estudiante || row.Documento_Estudiante,
-                        Email: row.Email_Estudiante || `temp_${Date.now()} @example.com`,
+                        Email: row.Email_Estudiante || `temp_${Date.now()}@example.com`,
                         Ultima_Actualizacion: now,
-                        Estado: 'Cursando'
+                        Estado: 'Cursando',
+                        _createFolder: createFolders
                     };
                     const res = await api.students.create(studentData);
-                    finalStudentId = studentData.ID_Estudiante;
+                    finalStudentId = res?.ID_Estudiante || res?.id;
                 } else if (row._studentMatch) {
                     finalStudentId = row._studentMatch.ID_Estudiante;
                 }
@@ -282,17 +268,17 @@ const ThesisImport = () => {
                 let finalAdvisorId = row.ID_Asesor;
                 if (row._needsAdvisor) {
                     const advisorData = {
-                        ID_Docente: generateId('DOC', { year, month, sequence: nextAdvisorSeq++ }),
                         Nombre1: row.Nombre_Asesor || row.Nombre1_Asesor,
                         Apellido1: row.Apellido_Asesor || row.Apellido1_Asesor || '-',
                         Cedula: row.Cedula_Asesor || row.Documento_Asesor,
-                        Email: row.Email_Asesor || `temp_doc_${Date.now()} @example.com`,
+                        Email: row.Email_Asesor || `temp_doc_${Date.now()}@example.com`,
                         Fecha_Registro: now,
                         Ultima_Actualizacion: now,
-                        Activo: 'Sí'
+                        Activo: 'Sí',
+                        _createFolder: createFolders
                     };
                     const res = await api.teachers.create(advisorData);
-                    finalAdvisorId = advisorData.ID_Docente;
+                    finalAdvisorId = res?.ID_Docente || res?.id;
                 } else if (row._advisorMatch) {
                     finalAdvisorId = row._advisorMatch.ID_Docente;
                 }
@@ -311,10 +297,11 @@ const ThesisImport = () => {
 
                 thesisData.ID_Estudiante = finalStudentId;
                 thesisData.ID_Asesor = finalAdvisorId;
-                thesisData.ID_Tesis = row.ID_Tesis || generateId('TES', { year, month, sequence: nextThesisSeq++ });
+                if (row.ID_Tesis) thesisData.ID_Tesis = row.ID_Tesis;
                 const timestamp = now.toLocaleString();
                 thesisData.Fecha_Registro = row.Fecha_Registro || timestamp;
                 thesisData.Ultima_Actualizacion = row.Ultima_Actualizacion || timestamp;
+                thesisData._createFolder = createFolders;
 
                 await api.thesis.create(thesisData);
                 successCount++;
@@ -395,6 +382,19 @@ const ThesisImport = () => {
                             <button onClick={downloadTemplate} className="px-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl font-black text-slate-700 dark:text-slate-200 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
                                 <Download size={20} /> Plantilla Oficial
                             </button>
+                        </div>
+                        <div className="flex items-center justify-center mt-6">
+                            <label className="flex items-center cursor-pointer bg-white dark:bg-slate-800 px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                <div className="relative">
+                                    <input type="checkbox" className="sr-only" checked={createFolders} onChange={(e) => setCreateFolders(e.target.checked)} />
+                                    <div className={`block w-14 h-8 rounded-full transition-colors ${createFolders ? 'bg-purple-600' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                                    <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${createFolders ? 'transform translate-x-6' : ''}`}></div>
+                                </div>
+                                <div className="ml-4 text-left">
+                                    <h4 className="text-sm font-bold text-slate-800 dark:text-white">Crear carpetas en Drive</h4>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-wide">Genera la estructura de directorios al importar</p>
+                                </div>
+                            </label>
                         </div>
                     </div>
                 ) : (

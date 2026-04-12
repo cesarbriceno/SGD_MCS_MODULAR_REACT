@@ -8,7 +8,6 @@ import {
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
-import { generateId, findNextSequence } from '../../utils/idGenerator';
 import CustomSelect from '../../components/common/CustomSelect';
 import FolderExplorer from '../../components/common/FolderExplorer';
 
@@ -165,17 +164,8 @@ const ThesisForm = () => {
             const month = now.getMonth() + 1;
             const timestamp = now.toISOString();
 
-            let finalId = id;
-            if (!isEdit) {
-                const existingThesis = await api.thesis.list();
-                const ids = existingThesis.map(t => t.ID_Tesis || t.id);
-                const nextSeq = findNextSequence('TES', ids, year, month);
-                finalId = generateId('TES', { year, month, sequence: nextSeq });
-            }
-
             const dataToSave = {
                 ...formData,
-                ID_Tesis: finalId,
                 Ultima_Actualizacion: timestamp
             };
             if (!isEdit) {

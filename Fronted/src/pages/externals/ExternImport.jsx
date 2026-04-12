@@ -8,7 +8,6 @@ import * as XLSX from 'xlsx';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
-import { generateId, findNextSequence } from '../../utils/idGenerator';
 
 const styles = `
   .glass-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 2rem; }
@@ -55,6 +54,7 @@ const ExternImport = () => {
     const [validationReport, setValidationReport] = useState(null);
     const [importProgress, setImportProgress] = useState({ current: 0, total: 0, status: 'idle' });
     const [showOnlyErrors, setShowOnlyErrors] = useState(false);
+    const [createFolders, setCreateFolders] = useState(true);
 
     const REQUIRED_FIELDS = ["Nombre1", "Apellido1", "Numero_Documento", "Email", "Organizacion", "Cargo_Perfil", "Fecha_Ingreso"];
     const ALL_FIELDS = [
@@ -77,9 +77,6 @@ const ExternImport = () => {
     const validateData = (data) => {
         const report = { total: data.length, valid: 0, invalid: 0, errors: [], recs: [] };
         const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1;
-        let nextSeq = findNextSequence('EXT', existingExterns.map(ex => ex.ID_Externo || ex.Cedula || ex.id), year, month);
 
         const validated = data.map((row, idx) => {
             const rowErrors = [];
@@ -113,7 +110,6 @@ const ExternImport = () => {
                 return {
                     ...row,
                     _isValid: true,
-                    ID_Externo: row.ID_Externo || generateId('EXT', { year, month, sequence: nextSeq++ }),
                     Fecha_Registro: timestamp,
                     Ultima_Actualizacion: timestamp
                 };
@@ -235,13 +231,6 @@ const ExternImport = () => {
         let successCount = 0;
 
         const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1;
-        const existingIds = existingExterns.map(e => e.ID_Externo || e.id);
-        // Recalculate sequences before actual import to be safe
-        let latestExterns = [];
-        try { latestExterns = await api.externals.list(); } catch (e) { }
-        let nextSeq = findNextSequence('EXT', latestExterns.map(ex => ex.ID_Externo || ex.Cedula || ex.id), year, month);
 
         for (let i = 0; i < validRows.length; i++) {
             const rawRecord = { ...validRows[i] };
@@ -260,12 +249,17 @@ const ExternImport = () => {
 
             // Include system-generated tags
             const timestamp = now.toLocaleString();
-            record.ID_Externo = rawRecord.ID_Externo || generateId('EXT', { year, month, sequence: nextSeq++ });
+            if (rawRecord.ID_Externo) {
+                record.ID_Externo = rawRecord.ID_Externo;
+            }
             record.Fecha_Registro = rawRecord.Fecha_Registro || timestamp;
             record.Ultima_Actualizacion = rawRecord.Ultima_Actualizacion || timestamp;
 
             // Map Numero_Documento to Cedula (Backend legacy)
             record.Cedula = rawRecord.Numero_Documento;
+
+            // Inyección flag carpetas
+            record._createFolder = createFolders;
 
             try { await api.externals.create(record); successCount++; } catch (e) { console.error("Error creating extern", e); }
             setImportProgress(prev => ({ ...prev, current: i + 1 }));
@@ -342,6 +336,19 @@ const ExternImport = () => {
                             <button onClick={downloadTemplate} className="px-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl font-black text-slate-700 dark:text-slate-200 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
                                 <Download size={20} /> Formato Base
                             </button>
+                        </div>
+                        <div className="flex items-center justify-center mt-6">
+                            <label className="flex items-center cursor-pointer bg-white dark:bg-slate-800 px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                <div className="relative">
+                                    <input type="checkbox" className="sr-only" checked={createFolders} onChange={(e) => setCreateFolders(e.target.checked)} />
+                                    <div className={`block w-14 h-8 rounded-full transition-colors ${createFolders ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                                    <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${createFolders ? 'transform translate-x-6' : ''}`}></div>
+                                </div>
+                                <div className="ml-4 text-left">
+                                    <h4 className="text-sm font-bold text-slate-800 dark:text-white">Crear carpetas en Drive</h4>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-wide">Genera la estructura de directorios al importar</p>
+                                </div>
+                            </label>
                         </div>
                     </div>
                 ) : (

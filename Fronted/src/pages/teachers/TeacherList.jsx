@@ -293,11 +293,6 @@ const TeacherList = () => {
                                             <td className="p-4">{getStatusBadge(teacher.estado)}</td>
                                             <td className="p-4 text-right last:rounded-r-xl">
                                                 <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                    {teacher.folderUrl && (
-                                                        <a href={teacher.folderUrl} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg" title="Ver Carpeta de Drive">
-                                                            <FolderOpen size={18} />
-                                                        </a>
-                                                    )}
                                                     <Link to={`/teachers/view/${teacher.id}`} className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"><Eye size={18} /></Link>
                                                     <Link to={`/teachers/edit/${teacher.id}`} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg"><Edit size={18} /></Link>
                                                     <button onClick={() => handleDelete(teacher.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"><Trash2 size={18} /></button>

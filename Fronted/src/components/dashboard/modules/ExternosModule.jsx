@@ -16,7 +16,8 @@ const KpiCard = ({ title, value, subtext, icon: Icon, colorClass }) => (
 );
 
 export const ExternosModule = ({ data }) => {
-    const { externs = [] } = data || {};
+    const rawExterns = data?.externs;
+    const externs = Array.isArray(rawExterns) ? rawExterns.filter(Boolean) : [];
 
     const metrics = useMemo(() => {
         let total = externs.length;
@@ -94,15 +95,21 @@ export const ExternosModule = ({ data }) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Rol / Tipo de Origen</h3>
-                    <Chart options={donutOptions(Object.keys(metrics.charts.origen))} series={Object.values(metrics.charts.origen)} type="donut" height={300} />
+                    {Object.keys(metrics.charts.origen).length > 0 ? (
+                        <Chart options={donutOptions(Object.keys(metrics.charts.origen))} series={Object.values(metrics.charts.origen)} type="donut" height={300} />
+                    ) : <p className="text-slate-500 text-sm">Sin datos para mostrar.</p>}
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Composición por Género</h3>
-                    <Chart options={donutOptions(Object.keys(metrics.charts.sexo))} series={Object.values(metrics.charts.sexo)} type="donut" height={300} />
+                    {Object.keys(metrics.charts.sexo).length > 0 ? (
+                        <Chart options={donutOptions(Object.keys(metrics.charts.sexo))} series={Object.values(metrics.charts.sexo)} type="donut" height={300} />
+                    ) : <p className="text-slate-500 text-sm">Sin datos para mostrar.</p>}
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Top 5 Países Presentes</h3>
-                    <Chart options={barOptions} series={[{ name: 'Participantes', data: metrics.charts.paises.map(p => p[1]) }]} type="bar" height={300} />
+                    {metrics.charts.paises.length > 0 ? (
+                        <Chart options={barOptions} series={[{ name: 'Participantes', data: metrics.charts.paises.map(p => p[1]) }]} type="bar" height={300} />
+                    ) : <p className="text-slate-500 text-sm">Sin datos para mostrar.</p>}
                 </div>
             </div>
         </div>

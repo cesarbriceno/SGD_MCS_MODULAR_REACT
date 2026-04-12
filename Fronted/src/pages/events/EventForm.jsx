@@ -4,14 +4,14 @@ import {
     Calendar, MapPin, Clock, Globe, Award,
     DollarSign, Briefcase, MessageSquare, AlertCircle,
     Save, ArrowLeft, ChevronDown, Check, LayoutGrid,
-    Link as LinkIcon, Info, Users
+    Info, Users, RefreshCw, ExternalLink, FolderOpen
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
 import ParticipationManager from './ParticipationManager';
 import CustomSelect from '../../components/common/CustomSelect';
-import { RefreshCw, ExternalLink, FolderOpen } from 'lucide-react';
+import DocumentArchive from '../documents/DocumentArchive';
 
 const styles = `
   @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
@@ -135,7 +135,8 @@ const EventForm = () => {
         { id: 'LOG', label: 'Logística', icon: MapPin },
         { id: 'FIN', label: 'Financiera', icon: DollarSign },
         { id: 'ACA', label: 'Académica', icon: Award },
-        { id: 'PART', label: 'Participantes', icon: Users, disabled: !id && !isEdit }
+        { id: 'PART', label: 'Participantes', icon: Users, disabled: !id && !isEdit },
+        { id: 'DOCS', label: 'Documentos', icon: FolderOpen, disabled: !id && !isEdit }
     ];
 
     return (
@@ -271,76 +272,27 @@ const EventForm = () => {
                                         disabled={isView} className="w-full premium-input px-5 h-32 resize-none" placeholder="Describe los logros o impacto del evento..."
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">URL de Evidencias (Drive/Repo)</label>
-                                    <div className="relative">
-                                        <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                        <input value={formData.URL_Evidencias} onChange={e => setFormData(p => ({ ...p, URL_Evidencias: e.target.value }))} disabled={isView} className="w-full premium-input pl-12 pr-5" placeholder="https://..." />
-                                    </div>
-                                </div>
-
-                                {/* DRIVE REPOSITORY SECTION */}
-                                <div className="pt-4 border-t border-black/5 dark:border-white/5 mt-4">
-                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2.5 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl">
-                                                <FolderOpen size={20} />
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Repositorio Documental</h4>
-                                                <p className="text-[10px] text-slate-500 font-medium">Archivos y evidencias del evento en Drive</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2 w-full sm:w-auto">
-                                            {formData.URL_Evidencias || formData.URL_Carpeta_Drive ? (
-                                                <a href={formData.URL_Evidencias || formData.URL_Carpeta_Drive} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20">
-                                                    <ExternalLink size={14} /> ABRIR CARPETA
-                                                </a>
-                                            ) : id && (
-                                                <button
-                                                    type="button"
-                                                    onClick={async () => {
-                                                        setLoading(true);
-                                                        try {
-                                                            const res = await api.events.update(id, { _syncDrive: true });
-                                                            if (res.success) {
-                                                                toast.success('Sincronizado', 'Carpeta generada correctamente');
-                                                                const all = await api.events.list();
-                                                                const fresh = all.find(e => String(e.ID_Evento) === String(id) || String(e.id) === String(id));
-                                                                if (fresh) setFormData(prev => ({ ...prev, URL_Evidencias: fresh.URL_Carpeta_Drive || fresh.url_carpeta_drive }));
-                                                            }
-                                                        } catch (e) {
-                                                            toast.error('Error', 'No se pudo sincronizar');
-                                                        } finally {
-                                                            setLoading(false);
-                                                        }
-                                                    }}
-                                                    className="flex items-center gap-2 px-5 py-2 rounded-xl bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-white/20 transition-all"
-                                                >
-                                                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> GENERAR REPOSITORIO
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* DRIVE FILE EXPLORER */}
-                                    {(formData.ID_Carpeta_Drive || formData.URL_Evidencias) && (
-                                        <FolderExplorer
-                                            folderId={formData.ID_Carpeta_Drive}
-                                            folderUrl={formData.URL_Evidencias}
-                                        />
-                                    )}
-                                </div>
                             </section>
                         )}
 
+                        {activeTab === 'DOCS' && id && (
+                            <div className="animate-fade-in py-4">
+                                <DocumentArchive
+                                    beneficiaryId={id}
+                                    beneficiaryName={formData.Nombre_Evento}
+                                    folderId={formData.ID_Carpeta_Drive}
+                                    entityType="evento"
+                                />
+                            </div>
+                        )}
+
                         {activeTab === 'PART' && id && (
-                            <div className="animate-fade-in">
+                            <div className="animate-fade-in shadow-xl rounded-2xl overflow-hidden border border-black/5 dark:border-white/5">
                                 <ParticipationManager eventId={id} isView={isView} eventName={formData.Nombre_Evento} />
                             </div>
                         )}
 
-                        {!isView && activeTab !== 'PART' && (
+                        {!isView && activeTab !== 'PART' && activeTab !== 'DOCS' && (
                             <div className="flex justify-end pt-8">
                                 <button
                                     type="submit" disabled={loading}

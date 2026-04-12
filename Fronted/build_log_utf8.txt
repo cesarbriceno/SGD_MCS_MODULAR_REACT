@@ -1,0 +1,50 @@
+﻿
+> sgd-mcs-v3@0.0.0 build
+> vite build
+
+[36mvite v7.3.0 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mÔ£ô[39m 1053 modules transformed.
+node.exe : [31mÔ£ù[39m Build failed in 
+3.02s
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Users\USUARIO\AppData\Roamin ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifi 
+   ed: ([31mÔ£ù[39m Build failed in 3  
+  .02s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComm 
+   andError
+ 
+[31merror during build:
+[31mCould not resolve 
+"../../components/drive/FolderExplorer" 
+from 
+"src/pages/events/EventForm.jsx"[31m
+file: [36mC:/Users/USUARIO/OneDrive - 
+UNIVERSIDAD DE CORDOBA/Escritorio/SGD_MCS
+_v3/Fronted/src/pages/events/EventForm.js
+x[31m
+    at getRollupError (file:///C:/Users/U
+SUARIO/OneDrive%20-%20UNIVERSIDAD%20DE%20
+CORDOBA/Escritorio/SGD_MCS_v3/Fronted/nod
+e_modules/rollup/dist/es/shared/parseAst.
+js:401:41)
+    at error (file:///C:/Users/USUARIO/On
+eDrive%20-%20UNIVERSIDAD%20DE%20CORDOBA/E
+scritorio/SGD_MCS_v3/Fronted/node_modules
+/rollup/dist/es/shared/parseAst.js:397:42
+)
+    at 
+ModuleLoader.handleInvalidResolvedId (fil
+e:///C:/Users/USUARIO/OneDrive%20-%20UNIV
+ERSIDAD%20DE%20CORDOBA/Escritorio/SGD_MCS
+_v3/Fronted/node_modules/rollup/dist/es/s
+hared/node-entry.js:21661:24)
+    at file:///C:/Users/USUARIO/OneDrive%
+20-%20UNIVERSIDAD%20DE%20CORDOBA/Escritor
+io/SGD_MCS_v3/Fronted/node_modules/rollup
+/dist/es/shared/node-entry.js:21621:26[3
+9m

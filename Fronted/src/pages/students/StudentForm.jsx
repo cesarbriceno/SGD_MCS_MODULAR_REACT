@@ -9,7 +9,6 @@ import {
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
-import { generateId, findNextSequence } from '../../utils/idGenerator';
 import DocumentArchive from '../documents/DocumentArchive';
 import CustomSelect from '../../components/common/CustomSelect';
 import FolderExplorer from '../../components/common/FolderExplorer';
@@ -220,21 +219,9 @@ const StudentForm = () => {
             const now = new Date();
             const timestamp = now.toISOString();
 
-            let finalId = id;
-            if (!isEdit) {
-                const existingStudents = await api.students.list();
-                const ids = existingStudents.map(s => s.ID_Estudiante || s.id);
-                const nextSeq = findNextSequence('EST', ids, now.getFullYear(), now.getMonth() + 1);
-                finalId = generateId('EST', {
-                    year: now.getFullYear(),
-                    month: now.getMonth() + 1,
-                    sequence: nextSeq
-                });
-            }
-
             const response = isEdit
                 ? await api.students.update(id, { ...cleanData, Ultima_Actualizacion: timestamp, _createFolder: !formData.URL_Carpeta_Drive && createFolder })
-                : await api.students.create({ ...cleanData, ID_Estudiante: finalId, Fecha_Registro: timestamp, Ultima_Actualizacion: timestamp, _createFolder: createFolder });
+                : await api.students.create({ ...cleanData, Fecha_Registro: timestamp, Ultima_Actualizacion: timestamp, _createFolder: createFolder });
 
             // El backend puede devolver {success: true, ...} o simplemente el objeto creado/actualizado
             if (response && (response.success || response.id || response.ID_Estudiante || typeof response === 'object')) {
@@ -273,10 +260,21 @@ const StudentForm = () => {
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 relative z-10">
-                <button onClick={() => navigate('/students')} className="group flex items-center gap-2 px-5 py-2.5 rounded-full glass-panel-premium hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
-                    <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-                    <span className="font-medium text-sm">Volver</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    <button onClick={() => navigate('/students')} className="group flex items-center gap-2 px-5 py-2.5 rounded-full glass-panel-premium hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
+                        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                        <span className="font-medium text-sm">Volver</span>
+                    </button>
+                    {isView && (
+                        <button
+                            onClick={() => navigate(`/students/edit/${id}`)}
+                            className="group flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 text-white hover:bg-blue-500 transition-colors shadow-lg"
+                        >
+                            <FileText size={18} />
+                            <span className="font-bold text-sm">Editar</span>
+                        </button>
+                    )}
+                </div>
                 <h1 className="text-3xl font-bold drop-shadow-sm text-center">{title}</h1>
             </div>
 
@@ -399,65 +397,6 @@ const StudentForm = () => {
                                 <InputGroup label="Resolución" name="Motivo_Estado" value={formData.Motivo_Estado} onChange={handleChange} disabled={isDisabled} placeholder="Nro acta..." icon={FileText} />
                             </>
                         )}
-
-                        {/* DRIVE INTEGRATION IN FORM */}
-                        <div className="col-span-full pt-4 border-t border-white/10 mt-4">
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/20">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg">
-                                        <FolderOpen size={20} />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-sm font-bold uppercase tracking-wider">Repositorio Documental</h4>
-                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Carpeta personalizada en Google Drive</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 w-full sm:w-auto">
-                                    {formData.URL_Carpeta_Drive ? (
-                                        <a
-                                            href={formData.URL_Carpeta_Drive}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg"
-                                        >
-                                            <ExternalLink size={14} /> ABRIR CARPETA
-                                        </a>
-                                    ) : id && (
-                                        <button
-                                            type="button"
-                                            onClick={async () => {
-                                                setLoading(true);
-                                                try {
-                                                    const res = await api.students.update(id, { _syncDrive: true });
-                                                    if (res.success) {
-                                                        toast.success('Sincronizado', 'Carpeta generada correctamente');
-                                                        const all = await api.students.list();
-                                                        const fresh = all.find(s => String(s.ID_Estudiante) === String(id) || String(s.id) === String(id));
-                                                        if (fresh) setFormData(prev => ({ ...prev, URL_Carpeta_Drive: fresh.URL_Carpeta_Drive || fresh.url_carpeta_drive, ID_Carpeta_Drive: fresh.ID_Carpeta_Drive || fresh.id_carpeta_drive }));
-                                                    }
-                                                } catch (e) {
-                                                    toast.error('Error', 'No se pudo sincronizar');
-                                                } finally {
-                                                    setLoading(false);
-                                                }
-                                            }}
-                                            className="flex items-center gap-2 px-6 py-2 rounded-xl bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-white/20 transition-all font-black uppercase"
-                                        >
-                                            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> GENERAR CARPETA
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* DRIVE FILE EXPLORER INTEGRATION */}
-                            <FolderExplorer
-                                folderId={formData.ID_Carpeta_Drive}
-                                folderUrl={formData.URL_Carpeta_Drive}
-                                entityType="estudiante"
-                                entityId={formData.ID_Estudiante}
-                                entityData={formData}
-                            />
-                        </div>
                     </GlassSection>
 
                     {/* 4. LABORAL */}
@@ -498,8 +437,9 @@ const StudentForm = () => {
                         </div>
                     )}
                 </form>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 };
 

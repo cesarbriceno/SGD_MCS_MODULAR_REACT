@@ -3,14 +3,14 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     User, Mail, Hash, Save, ArrowLeft,
     Briefcase, AlertCircle, ChevronDown, CheckCircle,
-    Phone, MapPin, Building, Globe, Check
+    Phone, MapPin, Building, Globe, Check, FileText,
+    RefreshCw, ExternalLink, FolderOpen
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
-import { generateId, findNextSequence } from '../../utils/idGenerator';
 import CustomSelect from '../../components/common/CustomSelect';
-import { RefreshCw, ExternalLink, FolderOpen } from 'lucide-react';
+import DocumentArchive from '../documents/DocumentArchive';
 
 const styles = `
   @keyframes float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(20px, 30px); } }
@@ -53,6 +53,7 @@ const ExternForm = () => {
     const isView = Boolean(id) && location.pathname.includes('/view');
     const title = isView ? 'Detalle de Externo' : isEdit ? 'Editar Externo' : 'Nuevo Externo';
 
+    const [activeMainTab, setActiveMainTab] = useState('info');
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         Nombre1: '', Nombre2: '', Apellido1: '', Apellido2: '',
@@ -123,17 +124,8 @@ const ExternForm = () => {
             const month = now.getMonth() + 1;
             const timestamp = now.toISOString();
 
-            let finalId = id;
-            if (!isEdit) {
-                const existingExterns = await api.externals.list();
-                const ids = existingExterns.map(e => e.ID_Externo || e.id);
-                const nextSeq = findNextSequence('EXT', ids, year, month);
-                finalId = generateId('EXT', { year, month, sequence: nextSeq });
-            }
-
             const dataToSave = {
                 ...formData,
-                ID_Externo: finalId,
                 Ultima_Actualizacion: timestamp
             };
             if (!isEdit) {
@@ -165,120 +157,109 @@ const ExternForm = () => {
             <div className="orb orb-2"></div>
 
             <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 relative z-10">
-                <button onClick={() => navigate('/externals')} className="group flex items-center gap-2 px-5 py-2.5 rounded-full glass-card-premium hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
-                    <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-                    <span className="font-medium">Volver</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    <button onClick={() => navigate('/externals')} className="group flex items-center gap-2 px-5 py-2.5 rounded-full glass-card-premium hover:bg-white/60 dark:hover:bg-slate-800/60 transition-colors">
+                        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                        <span className="font-medium">Volver</span>
+                    </button>
+                    {isView && (
+                        <button
+                            onClick={() => navigate(`/externals/edit/${id}`)}
+                            className="group flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 text-white hover:bg-emerald-500 transition-colors shadow-lg"
+                        >
+                            <FileText size={18} />
+                            <span className="font-bold text-sm">Editar</span>
+                        </button>
+                    )}
+                </div>
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{title}</h1>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8 relative z-10" autoComplete="off">
-                <GlassSection title="Identificación" icon={User} color="green" zIndex={30}>
-                    <InputGroup label="Primer Nombre" name="Nombre1" required value={formData.Nombre1} onChange={handleChange} disabled={isDisabled} error={errors.Nombre1} icon={User} />
-                    <InputGroup label="Segundo Nombre" name="Nombre2" value={formData.Nombre2} onChange={handleChange} disabled={isDisabled} icon={User} />
-                    <InputGroup label="Primer Apellido" name="Apellido1" required value={formData.Apellido1} onChange={handleChange} disabled={isDisabled} error={errors.Apellido1} icon={User} />
-                    <InputGroup label="Segundo Apellido" name="Apellido2" value={formData.Apellido2} onChange={handleChange} disabled={isDisabled} icon={User} />
-                    <InputGroup label="Tipo Doc." name="Tipo_Documento" options={['CC', 'CE', 'PAS', 'DNI']} value={formData.Tipo_Documento} onChange={handleChange} disabled={isDisabled} icon={Hash} />
-                    <InputGroup label="Número Doc." name="Numero_Documento" required value={formData.Numero_Documento} onChange={handleChange} disabled={isDisabled} error={errors.Numero_Documento} icon={Hash} />
-                    <InputGroup label="Lugar Expedición" name="Lugar_Expedicion" value={formData.Lugar_Expedicion} onChange={handleChange} disabled={isDisabled} icon={MapPin} />
-                    <InputGroup label="Sexo" name="Sexo" options={['Masculino', 'Femenino', 'Otro']} value={formData.Sexo} onChange={handleChange} disabled={isDisabled} icon={User} />
-
-                    {!formData.URL_Carpeta_Drive && (
-                        <div className="col-span-full mt-4 p-4 rounded-2xl bg-green-50/50 dark:bg-white/5 border border-green-100 dark:border-white/5 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-500 text-white rounded-xl">
-                                    <FolderOpen size={18} />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Carpeta de Drive</p>
-                                    <p className="text-[10px] text-slate-500 font-medium">Generar espacio digital automáticamente</p>
-                                </div>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" checked={createFolder} onChange={(e) => setCreateFolder(e.target.checked)} className="sr-only peer" disabled={isDisabled} />
-                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                            </label>
-                        </div>
-                    )}
-                </GlassSection>
-
-                <GlassSection title="Contacto y Ubicación" icon={Globe} color="blue" zIndex={20}>
-                    <InputGroup label="Email" name="Email" type="email" required value={formData.Email} onChange={handleChange} disabled={isDisabled} error={errors.Email} icon={Mail} />
-                    <InputGroup label="Teléfono" name="Telefono" value={formData.Telefono} onChange={handleChange} disabled={isDisabled} icon={Phone} />
-                    <InputGroup label="País" name="Pais" value={formData.Pais} onChange={handleChange} disabled={isDisabled} icon={Globe} />
-                    <InputGroup label="Ciudad" name="Ciudad" value={formData.Ciudad} onChange={handleChange} disabled={isDisabled} icon={MapPin} />
-                    <InputGroup label="Origen" name="Tipo_Origen" options={['Nacional', 'Internacional']} value={formData.Tipo_Origen} onChange={handleChange} disabled={isDisabled} icon={Globe} />
-                </GlassSection>
-
-                <GlassSection title="Perfil Profesional" icon={Briefcase} color="emerald" zIndex={10}>
-                    <InputGroup label="Organización" name="Organizacion" required value={formData.Organizacion} onChange={handleChange} disabled={isDisabled} icon={Building} />
-                    <InputGroup label="Cargo / Perfil" name="Cargo_Perfil" required value={formData.Cargo_Perfil} onChange={handleChange} disabled={isDisabled} icon={Briefcase} />
-                </GlassSection>
-
-                {/* REPOSITORIO DRIVE */}
-                {id && (
-                    <GlassSection title="Repositorio Documental" icon={FolderOpen} color="blue" zIndex={5}>
-                        <div className="col-span-full">
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-blue-50/50 dark:bg-white/5 border border-blue-100 dark:border-white/5">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-blue-500 text-white rounded-xl">
-                                        <FolderOpen size={20} />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Carpeta de Drive</h4>
-                                        <p className="text-[10px] font-bold text-slate-400">Expediente digital del externo</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 w-full sm:w-auto">
-                                    {formData.URL_Carpeta_Drive || formData.url_carpeta_drive ? (
-                                        <a href={formData.URL_Carpeta_Drive || formData.url_carpeta_drive} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg">
-                                            <ExternalLink size={14} /> ABRIR
-                                        </a>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={async () => {
-                                                setLoading(true);
-                                                try {
-                                                    const res = await api.externals.update(id, { _syncDrive: true });
-                                                    if (res.success) {
-                                                        toast.success('Sincronizado', 'Carpeta generada');
-                                                        const all = await api.externals.list();
-                                                        const fresh = all.find(e => String(e.ID_Externo) === String(id) || String(e.id) === String(id));
-                                                        if (fresh) setFormData(p => ({ ...p, URL_Carpeta_Drive: fresh.URL_Carpeta_Drive || fresh.url_carpeta_drive, ID_Carpeta_Drive: fresh.ID_Carpeta_Drive || fresh.id_carpeta_drive }));
-                                                    }
-                                                } catch (e) {
-                                                    toast.error('Error', 'No se pudo generar');
-                                                } finally {
-                                                    setLoading(false);
-                                                }
-                                            }}
-                                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-all"
-                                        >
-                                            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> GENERAR
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {(formData.ID_Carpeta_Drive || formData.URL_Carpeta_Drive) && (
-                                <FolderExplorer
-                                    folderId={formData.ID_Carpeta_Drive || formData.id_carpeta_drive}
-                                    folderUrl={formData.URL_Carpeta_Drive || formData.url_carpeta_drive}
-                                />
-                            )}
-                        </div>
-                    </GlassSection>
-                )}
-
-                {!isView && (
-                    <div className="flex justify-end pt-6">
-                        <button type="submit" disabled={loading} className="px-10 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold shadow-lg transition-transform hover:scale-105 border border-white/20 flex items-center gap-2">
-                            {loading ? 'Guardando...' : <><Save size={20} /> GUARDAR</>}
+            {/* Main Tabs (only if viewing/editing existing) */}
+            {id && (
+                <div className="flex justify-center mb-8 relative z-10">
+                    <div className="bg-white/30 dark:bg-black/20 p-1.5 rounded-2xl flex gap-2 border border-white/20 backdrop-blur-md">
+                        <button
+                            type="button" onClick={() => setActiveMainTab('info')}
+                            className={`px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeMainTab === 'info' ? 'bg-white dark:bg-slate-700 text-green-600 shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            Información
+                        </button>
+                        <button
+                            type="button" onClick={() => setActiveMainTab('docs')}
+                            className={`px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeMainTab === 'docs' ? 'bg-white dark:bg-slate-700 text-green-600 shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            Documentos
                         </button>
                     </div>
-                )}
-            </form>
+                </div>
+            )}
+
+            {activeMainTab === 'docs' && id ? (
+                <div className="relative z-10 max-w-5xl mx-auto">
+                    <div className="glass-card-premium p-8 rounded-[2.5rem]">
+                        <DocumentArchive
+                            beneficiaryId={id}
+                            beneficiaryName={`${formData.Nombre1} ${formData.Apellido1}`}
+                            folderId={formData.ID_Carpeta_Drive}
+                            entityType="externo"
+                        />
+                    </div>
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit} className="space-y-8 relative z-10" autoComplete="off">
+                    <GlassSection title="Identificación" icon={User} color="green" zIndex={30}>
+                        <InputGroup label="Primer Nombre" name="Nombre1" required value={formData.Nombre1} onChange={handleChange} disabled={isDisabled} error={errors.Nombre1} icon={User} />
+                        <InputGroup label="Segundo Nombre" name="Nombre2" value={formData.Nombre2} onChange={handleChange} disabled={isDisabled} icon={User} />
+                        <InputGroup label="Primer Apellido" name="Apellido1" required value={formData.Apellido1} onChange={handleChange} disabled={isDisabled} error={errors.Apellido1} icon={User} />
+                        <InputGroup label="Segundo Apellido" name="Apellido2" value={formData.Apellido2} onChange={handleChange} disabled={isDisabled} icon={User} />
+                        <InputGroup label="Tipo Doc." name="Tipo_Documento" options={['CC', 'CE', 'PAS', 'DNI']} value={formData.Tipo_Documento} onChange={handleChange} disabled={isDisabled} icon={Hash} />
+                        <InputGroup label="Número Doc." name="Numero_Documento" required value={formData.Numero_Documento} onChange={handleChange} disabled={isDisabled} error={errors.Numero_Documento} icon={Hash} />
+                        <InputGroup label="Lugar Expedición" name="Lugar_Expedicion" value={formData.Lugar_Expedicion} onChange={handleChange} disabled={isDisabled} icon={MapPin} />
+                        <InputGroup label="Sexo" name="Sexo" options={['Masculino', 'Femenino', 'Otro']} value={formData.Sexo} onChange={handleChange} disabled={isDisabled} icon={User} />
+
+                        {!formData.URL_Carpeta_Drive && (
+                            <div className="col-span-full mt-4 p-4 rounded-2xl bg-green-50/50 dark:bg-white/5 border border-green-100 dark:border-white/5 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-green-500 text-white rounded-xl">
+                                        <FolderOpen size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Carpeta de Drive</p>
+                                        <p className="text-[10px] text-slate-500 font-medium">Generar espacio digital automáticamente</p>
+                                    </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={createFolder} onChange={(e) => setCreateFolder(e.target.checked)} className="sr-only peer" disabled={isDisabled} />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                                </label>
+                            </div>
+                        )}
+                    </GlassSection>
+
+                    <GlassSection title="Contacto y Ubicación" icon={Globe} color="blue" zIndex={20}>
+                        <InputGroup label="Email" name="Email" type="email" required value={formData.Email} onChange={handleChange} disabled={isDisabled} error={errors.Email} icon={Mail} />
+                        <InputGroup label="Teléfono" name="Telefono" value={formData.Telefono} onChange={handleChange} disabled={isDisabled} icon={Phone} />
+                        <InputGroup label="País" name="Pais" value={formData.Pais} onChange={handleChange} disabled={isDisabled} icon={Globe} />
+                        <InputGroup label="Ciudad" name="Ciudad" value={formData.Ciudad} onChange={handleChange} disabled={isDisabled} icon={MapPin} />
+                        <InputGroup label="Origen" name="Tipo_Origen" options={['Nacional', 'Internacional']} value={formData.Tipo_Origen} onChange={handleChange} disabled={isDisabled} icon={Globe} />
+                    </GlassSection>
+
+                    <GlassSection title="Perfil Profesional" icon={Briefcase} color="emerald" zIndex={10}>
+                        <InputGroup label="Organización" name="Organizacion" required value={formData.Organizacion} onChange={handleChange} disabled={isDisabled} icon={Building} />
+                        <InputGroup label="Cargo / Perfil" name="Cargo_Perfil" required value={formData.Cargo_Perfil} onChange={handleChange} disabled={isDisabled} icon={Briefcase} />
+                    </GlassSection>
+
+
+                    {!isView && (
+                        <div className="flex justify-end pt-6">
+                            <button type="submit" disabled={loading} className="px-10 py-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold shadow-lg transition-transform hover:scale-105 border border-white/20 flex items-center gap-2">
+                                {loading ? 'Guardando...' : <><Save size={20} /> GUARDAR</>}
+                            </button>
+                        </div>
+                    )}
+                </form>
+            )}
         </div>
     );
 };

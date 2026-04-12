@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
     Plus, Search, Users, Eye, Edit, Trash2,
     SlidersHorizontal, ChevronLeft, ChevronRight, FileSpreadsheet,
-    Download, Globe, Building2, Mail, Phone, MapPin, User, FolderOpen
+    Download, Globe, Building2, Mail, Phone, MapPin, User, FolderOpen,
+    CheckSquare, Square
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';

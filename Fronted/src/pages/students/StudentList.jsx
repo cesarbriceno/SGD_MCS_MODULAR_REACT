@@ -413,11 +413,6 @@ const StudentList = () => {
                                             </td>
                                             <td className="p-4 text-right last:rounded-r-xl align-middle">
                                                 <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                                                    {student.folderUrl && (
-                                                        <a href={student.folderUrl} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors" title="Ver Carpeta de Drive">
-                                                            <FolderOpen size={18} />
-                                                        </a>
-                                                    )}
                                                     <Link to={`/students/view/${student.id}`} className="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"><Eye size={18} /></Link>
                                                     <Link to={`/students/edit/${student.id}`} className="p-2 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"><Edit size={18} /></Link>
                                                     <button onClick={() => handleDelete(student.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 size={18} /></button>

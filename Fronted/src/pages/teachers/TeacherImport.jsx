@@ -8,7 +8,6 @@ import * as XLSX from 'xlsx';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
-import { generateId, findNextSequence } from '../../utils/idGenerator';
 
 const styles = `
   .glass-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 2rem; }
@@ -55,6 +54,7 @@ const TeacherImport = () => {
     const [validationReport, setValidationReport] = useState(null);
     const [importProgress, setImportProgress] = useState({ current: 0, total: 0, status: 'idle' });
     const [showOnlyErrors, setShowOnlyErrors] = useState(false);
+    const [createFolders, setCreateFolders] = useState(true);
 
     const REQUIRED_FIELDS = ["Nombre1", "Apellido1", "Numero_Documento", "Email", "Nivel_Formacion", "Tipo_Vinculacion", "Fecha_Vinculacion"];
     const ALL_FIELDS = [
@@ -77,9 +77,6 @@ const TeacherImport = () => {
     const validateData = (data) => {
         const report = { total: data.length, valid: 0, invalid: 0, errors: [], recs: [] };
         const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1;
-        let nextSeq = findNextSequence('DOC', existingTeachers.map(t => t.ID_Docente || t.Cedula || t.id), year, month);
 
         const validated = data.map((row, idx) => {
             const rowErrors = [];
@@ -114,7 +111,6 @@ const TeacherImport = () => {
                 return {
                     ...row,
                     _isValid: true,
-                    ID_Docente: row.ID_Docente || generateId('DOC', { year, month, sequence: nextSeq++ }),
                     Fecha_Registro: timestamp,
                     Ultima_Actualizacion: timestamp,
                     Activo: row.Activo || 'Sí'
@@ -236,15 +232,7 @@ const TeacherImport = () => {
         setImportProgress({ current: 0, total: validRows.length, status: 'importing' });
         let success = 0;
 
-        // Calculate initial sequence for the batch
         const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1;
-
-        // Recalculate sequences before actual import to be safe
-        let latestTeachers = [];
-        try { latestTeachers = await api.teachers.list(); } catch (e) { }
-        let nextSeq = findNextSequence('DOC', latestTeachers.map(t => t.ID_Docente || t.Cedula || t.id), year, month);
 
         for (let i = 0; i < validRows.length; i++) {
             const rawRecord = { ...validRows[i] };
@@ -263,12 +251,17 @@ const TeacherImport = () => {
 
             // Include system-generated tags
             const timestamp = now.toLocaleString();
-            record.ID_Docente = rawRecord.ID_Docente || generateId('DOC', { year, month, sequence: nextSeq++ });
+            if (rawRecord.ID_Docente) {
+                record.ID_Docente = rawRecord.ID_Docente;
+            }
             record.Fecha_Registro = rawRecord.Fecha_Registro || timestamp;
             record.Ultima_Actualizacion = rawRecord.Ultima_Actualizacion || timestamp;
 
             // Map Numero_Documento to Cedula (Backend legacy)
             record.Cedula = rawRecord.Numero_Documento;
+
+            // Inyección del flag para creación de carpetas
+            record._createFolder = createFolders;
 
             try { await api.teachers.create(record); success++; } catch (e) { console.error("Error creating teacher", e); }
             setImportProgress(prev => ({ ...prev, current: i + 1 }));
@@ -345,6 +338,19 @@ const TeacherImport = () => {
                             <button onClick={downloadTemplate} className="px-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl font-black text-slate-700 dark:text-slate-200 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
                                 <Download size={20} /> Plantilla Oficial
                             </button>
+                        </div>
+                        <div className="flex items-center justify-center mt-6">
+                            <label className="flex items-center cursor-pointer bg-white dark:bg-slate-800 px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                <div className="relative">
+                                    <input type="checkbox" className="sr-only" checked={createFolders} onChange={(e) => setCreateFolders(e.target.checked)} />
+                                    <div className={`block w-14 h-8 rounded-full transition-colors ${createFolders ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                                    <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${createFolders ? 'transform translate-x-6' : ''}`}></div>
+                                </div>
+                                <div className="ml-4 text-left">
+                                    <h4 className="text-sm font-bold text-slate-800 dark:text-white">Crear carpetas en Drive</h4>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-wide">Genera la estructura de directorios al importar</p>
+                                </div>
+                            </label>
                         </div>
                     </div>
                 ) : (

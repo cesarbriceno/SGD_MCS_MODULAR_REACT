@@ -66,6 +66,11 @@ function getEvents() { return listEvents(); }
 function getParticipations() { return listParticipations(); }
 
 /**
+ * Genera certificados para los participantes de un evento.
+ */
+function emitCertificates(eventId) { return emitEventCertificates(eventId); }
+
+/**
  * Obtiene el listado completo de documentos (auditoría/archivo).
  * @returns {string} JSON con array de documentos.
  */
@@ -80,11 +85,41 @@ function getDocuments() { return listDocuments(); }
 function searchUniversal(query, context) { return executeSearch(query, context); }
 
 /**
+ * Obtiene el listado de plantillas disponibles en la carpeta _Plantillas de Drive.
+ * @returns {Array<Object>} Lista de plantillas.
+ */
+function getTemplatesList() { return getTemplates(); }
+
+/**
  * Realiza una búsqueda recursiva de archivos y carpetas en Drive.
  * @param {string} query - Texto a buscar.
  * @returns {Array<Object>} Lista de archivos y carpetas encontrados.
  */
 function searchUniversalRepository(query) { return searchUniversalRepository(query); }
+
+/**
+ * Genera un documento individual desde el Asistente.
+ */
+function generateIndividualDocument(templateId, data, fileName, folderId) {
+    return generateSingleDocument(templateId, data, fileName, folderId);
+}
+
+/**
+ * Envía certificados masivos por correo (PDFs pre-renderizados desde el frontend).
+ * @param {string} eventId - ID del evento.
+ * @param {Array<Object>} certificates - Array de {email, name, role, pdfBase64, fileName}.
+ */
+function sendBulkCertificates(eventId, certificates) {
+    return sendBulkCertificateEmails(eventId, certificates);
+}
+
+/**
+ * Envía un certificado individual por correo (PDF pre-renderizado desde el frontend).
+ * @param {Object} emailData - {email, name, eventName, role, pdfBase64, fileName, folderId}
+ */
+function sendIndividualCertificate(emailData) {
+    return sendSingleCertificateEmail(emailData);
+}
 
 /**
  * Nota: Las funciones de Drive (CRUD de archivos/carpetas) 

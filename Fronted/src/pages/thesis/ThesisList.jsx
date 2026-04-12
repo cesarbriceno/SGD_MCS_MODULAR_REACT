@@ -256,11 +256,6 @@ const ThesisList = () => {
                                 </div>
                             </div>
                             <div className="flex sm:flex-col gap-2 w-full sm:w-auto mt-2 sm:mt-0 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-                                {thesis.folderUrl && (
-                                    <a href={thesis.folderUrl} target="_blank" rel="noopener noreferrer" className="flex-1 p-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-slate-500 hover:text-emerald-600 rounded-xl transition-all flex justify-center" title="Ver Carpeta de Drive">
-                                        <FolderOpen size={20} />
-                                    </a>
-                                )}
                                 <Link to={`/thesis/view/${thesis.id}`} className="flex-1 p-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-slate-500 hover:text-blue-600 rounded-xl transition-all flex justify-center"><Eye size={20} /></Link>
                                 <Link to={`/thesis/edit/${thesis.id}`} className="flex-1 p-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-slate-500 hover:text-amber-600 rounded-xl transition-all flex justify-center"><Edit size={20} /></Link>
                                 <button onClick={() => handleDelete(thesis.id)} className="flex-1 p-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-900/30 text-slate-500 hover:text-red-600 rounded-xl transition-all flex justify-center"><Trash2 size={20} /></button>

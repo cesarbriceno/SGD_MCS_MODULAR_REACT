@@ -19,22 +19,26 @@ function generateUniqueId(prefix, counterName) {
     let rowIndex = -1;
     let currentVal = 0;
 
-    for (let i = 1; i < data.length; i++) { // Empezamos en 1 para saltar cabecera
+    for (let i = 1; i < data.length; i++) {
         if (data[i][0] === counterName) {
-            currentVal = parseInt(data[i][1]);
-            rowIndex = i + 1; // Ajuste por índice base 1 de Sheets
+            currentVal = parseInt(data[i][1]) || 0;
+            rowIndex = i + 1;
             break;
         }
     }
 
-    if (rowIndex === -1) throw new Error(`Contador '${counterName}' no encontrado en Configuración.`);
+    // Si no existe, lo creamos
+    if (rowIndex === -1) {
+        currentVal = 0;
+        configSheet.appendRow([counterName, 0, 'Sistema', new Date()]);
+        rowIndex = configSheet.getLastRow();
+    }
 
-    // Incrementar y Guardar (Transacción atómica simulada)
+    // Incrementar y Guardar
     const newVal = currentVal + 1;
     configSheet.getRange(rowIndex, 2).setValue(newVal);
-    configSheet.getRange(rowIndex, 4).setValue(new Date()); // Actualizar timestamp
+    configSheet.getRange(rowIndex, 4).setValue(new Date());
 
-    // Formatear: EST0001, DOC0045, etc.
     const padded = newVal.toString().padStart(4, '0');
     return `${prefix}${padded}`;
 }

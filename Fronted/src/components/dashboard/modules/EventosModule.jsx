@@ -60,7 +60,8 @@ const KpiCard = ({ title, value, subtext, icon: Icon, colorClass }) => (
 
 
 export const EventosModule = ({ data }) => {
-    const { events = [] } = data || {};
+    const rawEvents = data?.events;
+    const events = Array.isArray(rawEvents) ? rawEvents.filter(Boolean) : [];
 
     const metrics = useMemo(() => {
         let total = events.length;
@@ -187,7 +188,9 @@ export const EventosModule = ({ data }) => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Roles de Asistencia</h3>
-                    <Chart options={rolesOptions} series={rolesSeries} type="donut" height={320} />
+                    {rolesSeries.length > 0 ? (
+                        <Chart options={rolesOptions} series={rolesSeries} type="donut" height={320} />
+                    ) : <p className="text-slate-500 text-sm">Sin datos para mostrar.</p>}
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Impacto Pareto</h3>

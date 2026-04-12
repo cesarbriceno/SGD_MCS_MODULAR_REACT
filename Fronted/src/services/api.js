@@ -122,6 +122,15 @@ const runGoogleFunction = (functionName, args = []) => {
                     case 'getSystemRootFolderId':
                         resolve({ success: true, id: 'mock-root-folder-id', name: 'SGD_DATABASE_ROOT', url: '#' });
                         break;
+                    case 'emitCertificates':
+                        resolve({ success: true, message: 'Certificados emitidos en modo DEV (Simulación)', count: 5 });
+                        break;
+                    case 'sendBulkCertificates':
+                        resolve({ success: true, message: `${(args[1] || []).length} certificados enviados por correo (DEV).`, sent: (args[1] || []).length, failed: 0, errors: null });
+                        break;
+                    case 'sendIndividualCertificate':
+                        resolve({ success: true, message: `Certificado enviado a ${args[0]?.email || 'destinatario'} (DEV).`, fileId: 'mock-file-id' });
+                        break;
                     default:
                         resolve([]);
                         break;
@@ -197,6 +206,7 @@ export const api = {
     // Buscador
     documents: {
         search: (query, context) => runGoogleFunction('searchUniversal', [query, context]),
+        generateIndividual: (templateId, data, fileName, folderId) => runGoogleFunction('generateIndividualDocument', [templateId, data, fileName, folderId]),
     },
 
     // Gestión de Estudiantes
@@ -248,6 +258,12 @@ export const api = {
         create: (data) => runGoogleFunction('createItem', ['evento', data]),
         update: (id, data) => runGoogleFunction('updateItem', ['evento', id, data]),
         delete: (id) => runGoogleFunction('deleteItem', ['evento', id]),
+        emitCertificates: (eventId) => runGoogleFunction('emitCertificates', [eventId]),
+    },
+    // Certificados con Envío por Correo (Premium - PDF generado en Frontend)
+    certificates: {
+        sendBulk: (eventId, certificates) => runGoogleFunction('sendBulkCertificates', [eventId, certificates]),
+        sendIndividual: (emailData) => runGoogleFunction('sendIndividualCertificate', [emailData]),
     },
     // Gestión de Drive - Sistema Completo de Archivos
     drive: {
@@ -308,7 +324,7 @@ export const api = {
         getRecentFiles: (entityType, limit = 10) => runGoogleFunction('getRecentFiles', [entityType, limit]),
 
         // Plantillas
-        getTemplates: () => cachedDriveCall('templates', () => runGoogleFunction('getTemplates')),
+        getTemplates: () => cachedDriveCall('templates', () => runGoogleFunction('getTemplatesList')),
         useTemplate: async (templateId, destId, name) => {
             const res = await runGoogleFunction('copyTemplate', [templateId, destId, name]);
             if (res.success) invalidateDriveCache();

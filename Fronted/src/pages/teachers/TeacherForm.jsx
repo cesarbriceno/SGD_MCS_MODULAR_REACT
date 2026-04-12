@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
-    User, Mail, Calendar, Hash, Save, ArrowLeft,
+    User, Mail, Calendar, Hash, Save, ArrowLeft, FileText,
     BookOpen, Briefcase, MessageSquare, AlertCircle,
     ChevronDown, CheckCircle, XCircle, GraduationCap,
     Phone, MapPin, Building, Award, Linkedin, Users as UsersIcon, Link as LinkIcon, Globe, FolderOpen, RefreshCw, ExternalLink
@@ -9,7 +9,6 @@ import {
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
 import { useNotifications } from '../../context/NotificationContext';
-import { generateId, findNextSequence } from '../../utils/idGenerator';
 import CustomSelect from '../../components/common/CustomSelect';
 import FolderExplorer from '../../components/common/FolderExplorer';
 import DocumentArchive from '../documents/DocumentArchive';
@@ -126,14 +125,6 @@ const TeacherForm = () => {
                 Ultima_Actualizacion: timestamp
             };
             if (!isEdit) {
-                const existingTeachers = await api.teachers.list();
-                const ids = existingTeachers.map(t => t.ID_Docente || t.id);
-                const nextSeq = findNextSequence('DOC', ids, now.getFullYear(), now.getMonth() + 1);
-                payload.ID_Docente = formData.ID_Docente || generateId('DOC', {
-                    year: now.getFullYear(),
-                    month: now.getMonth() + 1,
-                    sequence: nextSeq
-                });
                 payload.Fecha_Registro = timestamp;
                 payload._createFolder = createFolder;
             } else if (!formData.URL_Carpeta_Drive && createFolder) {
@@ -163,10 +154,21 @@ const TeacherForm = () => {
             <style>{styles}</style>
 
             <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 relative z-10">
-                <button onClick={() => navigate('/teachers')} className="group flex items-center gap-2 px-5 py-2.5 rounded-full glass-card-premium hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all">
-                    <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-                    <span className="font-bold">Volver</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    <button onClick={() => navigate('/teachers')} className="group flex items-center gap-2 px-5 py-2.5 rounded-full glass-card-premium hover:bg-white/60 dark:hover:bg-slate-800/60 transition-all">
+                        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                        <span className="font-bold">Volver</span>
+                    </button>
+                    {isView && (
+                        <button
+                            onClick={() => navigate(`/teachers/edit/${id}`)}
+                            className="group flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 transition-all shadow-lg"
+                        >
+                            <FileText size={18} />
+                            <span className="font-bold text-sm">Editar</span>
+                        </button>
+                    )}
+                </div>
                 <h1 className="text-3xl font-black tracking-tight drop-shadow-sm text-center">{title}</h1>
             </div>
 
