@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, UserPlus, Trash2, CheckCircle2, XCircle, User, Award, Users, Download, Mail, Loader2, AlertTriangle } from 'lucide-react';
 import { api } from '../../services/api';
-import { toast } from '../../utils/swalUtils';
+import { toast, glassAlert } from '../../utils/swalUtils';
 import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import CertificateTemplate from '../documents/CertificateTemplate';
-import Swal from 'sweetalert2';
+import Swal from '../../utils/swalUtils';
 
 /**
  * Convierte un Blob a Base64.
@@ -23,6 +23,7 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
     const [participations, setParticipations] = useState([]);
     const [students, setStudents] = useState([]);
     const [teachers, setTeachers] = useState([]);
+    const [eventDetails, setEventDetails] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
     const [loadingCertificates, setLoadingCertificates] = useState(false);
@@ -36,16 +37,24 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [pData, sData, tData] = await Promise.all([
+            const [pData, sData, tData, eventData] = await Promise.all([
                 api.participations.list(),
                 api.students.list(),
-                api.teachers.list()
+                api.teachers.list(),
+                api.events.list()
             ]);
 
             const eventParts = pData.filter(p => String(p.ID_Evento) === String(eventId));
             setParticipations(eventParts);
             setStudents(sData);
             setTeachers(tData);
+
+            // Find the current event details
+            const currentEvent = eventData.find(e =>
+                String(e.ID_Evento) === String(eventId) ||
+                String(e.id) === String(eventId)
+            );
+            setEventDetails(currentEvent || null);
         } catch (error) {
             console.error(error);
         } finally {
@@ -142,16 +151,24 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
             confirmButtonText: 'Un solo PDF',
             denyButtonText: 'PDFs Individuales',
             cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#3b82f6',
-            denyButtonColor: '#10b981',
-            customClass: { popup: 'rounded-3xl' }
+            ...glassAlert({ icon: 'question' })
         });
 
         if (result.isConfirmed) {
             // Un solo PDF
             setLoadingCertificates(true);
             try {
-                const pdfDoc = <CertificateTemplate data={attendees} templateTitle="CERTIFICADO DE EVENTO" />;
+                // Agregar códigos únicos a cada participante
+                const attendeesWithCodes = attendees.map((p, i) => {
+                    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+                    const cedula = p.Cedula_Persona || '';
+                    const uniqueCode = cedula
+                        ? `SGD-MCS-${new Date().getFullYear()}-${cedula.slice(-4)}-${randomSuffix}`
+                        : `SGD-MCS-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}-${randomSuffix}`;
+                    return { ...p, uniqueCode };
+                });
+
+                const pdfDoc = <CertificateTemplate data={attendeesWithCodes} templateTitle="CERTIFICADO DE EVENTO" />;
                 const blob = await pdf(pdfDoc).toBlob();
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -172,6 +189,14 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                 for (let i = 0; i < attendees.length; i++) {
                     const p = attendees[i];
                     const participantName = p.Nombre_Persona || 'Participante';
+
+                    // Generar código único
+                    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+                    const cedula = p.Cedula_Persona || '';
+                    const uniqueCode = cedula
+                        ? `SGD-MCS-${new Date().getFullYear()}-${cedula.slice(-4)}-${randomSuffix}`
+                        : `SGD-MCS-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}-${randomSuffix}`;
+
                     const certData = {
                         nombre: participantName,
                         cedula: p.Cedula_Persona || '',
@@ -182,7 +207,11 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                         fecha: new Date().toISOString().split('T')[0],
                         lugar: 'Montería'
                     };
-                    const pdfDoc = <CertificateTemplate data={certData} templateTitle="CERTIFICADO DE EVENTO" />;
+                    const pdfDoc = <CertificateTemplate
+                        data={certData}
+                        templateTitle="CERTIFICADO DE EVENTO"
+                        uniqueCode={uniqueCode}
+                    />;
                     const blob = await pdf(pdfDoc).toBlob();
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -190,7 +219,7 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                     a.download = `Certificado_${participantName.replace(/\s+/g, '_')}.pdf`;
                     a.click();
                     URL.revokeObjectURL(url);
-                    
+
                     // Esperar 300ms entre cada descarga para evitar bloqueos del navegador
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
@@ -247,10 +276,10 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
         // Confirmación con detalle
         const confirmHtml = `
             <div style="text-align:left;font-size:13px;line-height:1.8;">
-                <p><strong>📧 Se enviarán ${withEmail.length} correos</strong> con certificados PDF premium adjuntos.</p>
+                <p><strong>📧 Se enviarán ${withEmail.length} correos</strong> con certificados PDF adjuntos.</p>
                 ${withoutEmail > 0 ? `<p style="color:#e11d48;">⚠️ ${withoutEmail} participante(s) no tienen email y serán omitidos.</p>` : ''}
                 <hr style="border:0;border-top:1px solid #e2e8f0;margin:12px 0;">
-                <p style="color:#64748b;font-size:11px;">Los PDFs se generarán con el diseño premium y se guardarán en la carpeta del evento en Drive.</p>
+                <p style="font-size:11px;">Los PDFs se generarán con el diseño premium y se guardarán en la carpeta del evento en Drive.</p>
             </div>
         `;
 
@@ -261,8 +290,7 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
             showCancelButton: true,
             confirmButtonText: `Enviar ${withEmail.length} Certificados`,
             cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#7c3aed',
-            customClass: { popup: 'rounded-3xl' }
+            ...glassAlert({ icon: 'question' })
         });
 
         if (!confirm.isConfirmed) return;
@@ -287,19 +315,35 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                 }));
 
                 try {
-                    // Generar PDF con @react-pdf/renderer
+                    // Generate unique certificate code
+                    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+                    const cedula = p.Cedula_Persona || '';
+                    const uniqueCode = cedula
+                        ? `SGD-MCS-${new Date().getFullYear()}-${cedula.slice(-4)}-${randomSuffix}`
+                        : `SGD-MCS-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}-${randomSuffix}`;
+
                     const certData = {
                         nombre: participantName,
                         cedula: p.Cedula_Persona || '',
                         rol: p.Rol || 'Asistente',
-                        nombreEvento: p.Nombre_Evento || eventName,
-                        horas: p.Intensidad_Horaria || '20',
+                        nombreEvento: eventDetails?.Nombre_Evento || p.Nombre_Evento || eventName,
+                        tipoEvento: eventDetails?.Tipo_Evento || 'Evento',
+                        alcance: eventDetails?.Alcance || '',
+                        modalidad: eventDetails?.Modalidad || 'Presencial',
+                        lugarEvento: eventDetails?.Lugar || 'Montería',
+                        fechaInicio: eventDetails?.Fecha_Inicio || '',
+                        fechaFin: eventDetails?.Fecha_Fin || '',
+                        horas: p.Intensidad_Horaria || eventDetails?.Intensidad_Horaria || '20',
                         tituloPonencia: p.Titulo_Ponencia || '',
                         fecha: new Date().toISOString().split('T')[0],
-                        lugar: 'Montería'
+                        lugar: eventDetails?.Lugar || 'Montería'
                     };
 
-                    const pdfDoc = <CertificateTemplate data={certData} templateTitle="CERTIFICADO DE EVENTO" />;
+                    const pdfDoc = <CertificateTemplate
+                        data={certData}
+                        templateTitle="CERTIFICADO DE EVENTO"
+                        uniqueCode={uniqueCode}
+                    />;
                     const blob = await pdf(pdfDoc).toBlob();
                     const base64 = await blobToBase64(blob);
 
@@ -309,11 +353,22 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                         role: p.Rol || 'Asistente',
                         pdfBase64: base64,
                         fileName: `Certificado_${participantName.replace(/\s+/g, '_')}_${eventName.replace(/\s+/g, '_')}.pdf`,
-                        eventName: p.Nombre_Evento || eventName
+                        eventName: eventDetails?.Nombre_Evento || p.Nombre_Evento || eventName,
+                        certificateCode: uniqueCode
                     });
                 } catch (pdfErr) {
-                    console.error(`Error generando PDF para ${participantName}:`, pdfErr);
+                    console.error(`❌ Error generando PDF para ${participantName}:`, pdfErr);
+                    // CONTINUAR con el siguiente en vez de fallar todo
                 }
+            }
+
+            console.log(`📋 Certificados preparados: ${allCertificates.length} de ${withEmail.length}`);
+
+            if (allCertificates.length === 0) {
+                toast.error('Error', 'No se pudo generar ningún certificado PDF. Revisa la consola para detalles.');
+                setLoadingCertificates(false);
+                setEmailProgress(null);
+                return;
             }
 
             // Enviar al backend en lotes
@@ -332,11 +387,17 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                     current: Math.min(batch + BATCH_SIZE, allCertificates.length)
                 }));
 
+                console.log(`📤 Enviando lote ${Math.floor(batch / BATCH_SIZE) + 1}: ${chunk.length} certificados...`);
+
                 const res = await api.certificates.sendBulk(eventId, chunk);
-                if (res.sent) totalSent += res.sent;
-                if (res.failed) totalFailed += res.failed;
-                if (res.errors) allErrors = [...allErrors, ...res.errors];
+                console.log('📨 Respuesta del backend:', res);
+
+                if (res && res.sent) totalSent += res.sent;
+                if (res && res.failed) totalFailed += res.failed;
+                if (res && res.errors) allErrors = [...allErrors, ...res.errors];
             }
+
+            console.log(`✅ Total: ${totalSent} enviados, ${totalFailed} fallidos`);
 
             // Mostrar resultado
             const resultIcon = totalFailed > 0 ? 'warning' : 'success';
@@ -345,7 +406,7 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                     <p style="font-size:48px;margin:0;">📬</p>
                     <p><strong>${totalSent}</strong> certificados enviados correctamente</p>
                     ${totalFailed > 0 ? `<p style="color:#e11d48;">${totalFailed} fallidos</p>` : ''}
-                    ${allErrors.length > 0 ? `<details style="text-align:left;margin-top:12px;"><summary style="cursor:pointer;color:#64748b;font-size:11px;">Ver errores</summary><pre style="font-size:10px;background:#f1f5f9;padding:8px;border-radius:8px;max-height:120px;overflow:auto;">${allErrors.join('\n')}</pre></details>` : ''}
+                    ${allErrors.length > 0 ? `<details style="text-align:left;margin-top:12px;"><summary style="cursor:pointer;font-size:11px;">Ver errores</summary><pre style="font-size:10px;padding:8px;border-radius:8px;max-height:120px;overflow:auto;">${allErrors.join('\n')}</pre></details>` : ''}
                 </div>
             `;
 
@@ -354,8 +415,7 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                 html: resultHtml,
                 icon: resultIcon,
                 confirmButtonText: 'Entendido',
-                confirmButtonColor: '#22c55e',
-                customClass: { popup: 'rounded-3xl' }
+                ...glassAlert({ icon: resultIcon })
             });
 
         } catch (error) {
@@ -435,7 +495,7 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                                 <button
                                     onClick={handleDownloadOptions}
                                     disabled={loadingCertificates}
-                                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-blue-600 text-white hover:bg-blue-500 transition-all font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-600/20"
+                                    className="btn-primary flex items-center gap-2"
                                 >
                                     {loadingCertificates ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
                                     {loadingCertificates ? 'Preparando...' : 'Descargar Certificados'}
@@ -443,7 +503,7 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                             ) : (
                                 <button
                                     disabled
-                                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-100 text-slate-400 font-black text-[10px] uppercase tracking-widest border border-slate-200 cursor-not-allowed"
+                                    className="btn-secondary flex items-center gap-2 cursor-not-allowed opacity-50"
                                     title="Marque al menos a un participante con asistencia para descargar"
                                 >
                                     <Download size={18} /> Sin Asistentes
@@ -451,7 +511,7 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                             )}
 
                             <button
-                                className={`flex items-center gap-2 px-6 py-3 rounded-2xl transition-all font-black text-[10px] uppercase tracking-widest shadow-sm border ${loadingCertificates ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-500 hover:to-indigo-500 border-purple-600/20 shadow-xl shadow-purple-600/20'}`}
+                                className={`btn-primary flex items-center gap-2 transition-all ${loadingCertificates ? 'opacity-50 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-purple-600/20 hover:from-purple-500 hover:to-indigo-500'}`}
                                 onClick={handleSendCertificatesByEmail}
                                 disabled={loadingCertificates}
                                 title="Generar certificados premium y enviar por correo electrónico"
@@ -520,13 +580,17 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                                                 disabled={isView} value={part.Rol} onChange={(e) => handleUpdate(part.ID_Participacion, 'Rol', e.target.value)}
                                                 className="bg-transparent border-none outline-none text-xs font-black uppercase tracking-tight text-center text-slate-600 dark:text-slate-400 cursor-pointer hover:text-green-600"
                                             >
-                                                <option>Asistente</option><option>Ponente</option><option>Organizador</option><option>Evaluador</option>
+                                                <option>Asistente</option>
+                                                <option>Ponente</option>
+                                                <option>Tallerista</option>
+                                                <option>Organizador</option>
+                                                <option>Evaluador</option>
                                             </select>
-                                            {part.Rol === 'Ponente' && (
+                                            {(part.Rol === 'Ponente' || part.Rol === 'Tallerista') && (
                                                 <input
                                                     disabled={isView} value={part.Titulo_Ponencia || ''}
                                                     onChange={(e) => handleUpdate(part.ID_Participacion, 'Titulo_Ponencia', e.target.value)}
-                                                    placeholder="Título de la ponencia..."
+                                                    placeholder={part.Rol === 'Ponente' ? "Título de la ponencia..." : "Título del taller..."}
                                                     className="w-full text-[10px] font-medium italic text-slate-500 bg-transparent text-center outline-none border-b border-dashed border-slate-300 focus:border-green-500"
                                                 />
                                             )}
@@ -539,7 +603,7 @@ const ParticipationManager = ({ eventId, eventName, isView }) => {
                                     </td>
                                     {!isView && (
                                         <td className="px-6 py-4 text-right">
-                                            <button onClick={() => handleDelete(part.ID_Participacion)} className="p-2 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
+                                            <button onClick={() => handleDelete(part.ID_Participacion)} className="btn-ghost-danger p-2"><Trash2 size={18} /></button>
                                         </td>
                                     )}
                                 </tr>

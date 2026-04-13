@@ -59,7 +59,7 @@ const Navbar = ({ darkMode, setDarkMode, toggleSidebar }) => {
             <div className="flex items-center gap-4">
                 <button
                     onClick={toggleSidebar}
-                    className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-200 transition-colors active:scale-95"
+                    className="btn-ghost p-2.5"
                 >
                     <Menu size={24} strokeWidth={2.5} />
                 </button>
@@ -83,14 +83,14 @@ const Navbar = ({ darkMode, setDarkMode, toggleSidebar }) => {
             </div>
 
             <div className="flex items-center gap-3">
-                <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-slate-300 transition-colors">
+                <button onClick={() => setDarkMode(!darkMode)} className="btn-ghost p-2.5">
                     {darkMode ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} className="text-indigo-500" />}
                 </button>
 
                 <div className="relative" ref={notifRef}>
                     <button
                         onClick={() => setIsNotifOpen(!isNotifOpen)}
-                        className={`p-2.5 rounded-xl transition-all relative ${isNotifOpen ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-slate-300'}`}
+                        className={`btn-ghost p-2.5 relative ${isNotifOpen ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : ''}`}
                     >
                         <Bell size={20} />
                         {unreadCount > 0 && <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-[#0f172a] animate-pulse"></span>}
@@ -101,7 +101,7 @@ const Navbar = ({ darkMode, setDarkMode, toggleSidebar }) => {
                             <div className="px-6 py-4 border-b border-slate-100/50 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/5 text-slate-800 dark:text-white font-black text-[10px] uppercase tracking-[0.2em]">
                                 <span>Notificaciones</span>
                                 {notifications.length > 0 && (
-                                    <button onClick={clearAll} className="text-[10px] text-blue-500 hover:text-blue-600 font-bold transition-colors">Limpiar</button>
+                                    <button onClick={clearAll} className="btn-ghost text-[10px] text-blue-500 hover:text-blue-600 font-bold px-3 py-1">Limpiar</button>
                                 )}
                             </div>
                             <div className="max-h-80 overflow-y-auto custom-scrollbar p-1">
@@ -128,7 +128,7 @@ const Navbar = ({ darkMode, setDarkMode, toggleSidebar }) => {
                                                 </div>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
-                                                    className="p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="btn-ghost-danger p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
                                                 >
                                                     <X size={14} />
                                                 </button>

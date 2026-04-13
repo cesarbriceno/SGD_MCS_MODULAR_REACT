@@ -196,6 +196,7 @@ const DocumentArchive = ({ beneficiaryId, beneficiaryName, folderId, entityType 
                                     <p className="text-[10px] text-slate-400 font-medium">
                                         {formatSize(file.size)}
                                         {file.lastUpdated && ` · ${new Date(file.lastUpdated).toLocaleDateString('es-CO')}`}
+                                        {file.folderName && ` · 📁 ${file.folderName}`}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -239,10 +240,10 @@ const DocumentArchive = ({ beneficiaryId, beneficiaryName, folderId, entityType 
                             return (
                                 <div key={doc.UUID || i} className="flex items-start gap-4 p-4 rounded-2xl bg-white/30 dark:bg-black/20 border border-slate-100 dark:border-slate-700/50">
                                     <div className={`p-2 rounded-lg shrink-0 text-xs font-black uppercase tracking-wider ${(doc.Tipo_Documento || '').includes('CREATE') ? 'bg-green-100 text-green-700' :
-                                            (doc.Tipo_Documento || '').includes('UPDATE') ? 'bg-blue-100 text-blue-700' :
-                                                (doc.Tipo_Documento || '').includes('UPLOAD') ? 'bg-purple-100 text-purple-700' :
-                                                    (doc.Tipo_Documento || '').includes('DELETE') ? 'bg-red-100 text-red-700' :
-                                                        'bg-slate-100 text-slate-600'
+                                        (doc.Tipo_Documento || '').includes('UPDATE') ? 'bg-blue-100 text-blue-700' :
+                                            (doc.Tipo_Documento || '').includes('UPLOAD') ? 'bg-purple-100 text-purple-700' :
+                                                (doc.Tipo_Documento || '').includes('DELETE') ? 'bg-red-100 text-red-700' :
+                                                    'bg-slate-100 text-slate-600'
                                         }`}>
                                         {(doc.Tipo_Documento || 'ACCIÓN').replace('ENTITY_', '')}
                                     </div>

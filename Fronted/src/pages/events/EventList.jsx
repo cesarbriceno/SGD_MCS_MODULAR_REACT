@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
     Plus, Search, Calendar, Eye, Edit, Trash2,
     SlidersHorizontal, Download, ChevronLeft, ChevronRight,
-    ChevronDown, MapPin, Clock, Globe, Award, FolderOpen
+    ChevronDown, MapPin, Clock, Globe, Award, FolderOpen,
+    Square, CheckSquare, X
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { toast } from '../../utils/swalUtils';
@@ -66,7 +67,7 @@ const EventList = () => {
     const [rawEvents, setRawEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 8;
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     const [searchTerm, setSearchTerm] = useState('');
 
     const [filterType, setFilterType] = useState('Todos');
@@ -107,16 +108,28 @@ const EventList = () => {
     };
 
     const handleBulkDelete = async () => {
-        const result = await toast.confirm('¿Eliminar seleccionados?', `Se eliminarán ${selectedIds.size} eventos.`);
+        const result = await toast.confirm('¿Eliminar seleccionados?', `Se eliminarán ${selectedIds.size} eventos permanentemente.`);
         if (result.isConfirmed) {
             try {
                 const idsArray = Array.from(selectedIds);
-                setRawEvents(prev => prev.filter(e => !selectedIds.has(e.ID_Evento || e.id)));
+                // Delete one by one to ensure all are deleted
+                let deletedCount = 0;
+                for (const id of idsArray) {
+                    try {
+                        await api.events.delete(id);
+                        deletedCount++;
+                    } catch (err) {
+                        console.error(`Error deleting event ${id}:`, err);
+                    }
+                }
+
+                // Reload events to get fresh data
+                await loadEvents();
                 setSelectedIds(new Set());
-                await api.events.bulkDelete(idsArray);
-                toast.success('¡Completado!', `Se eliminaron ${idsArray.length} registros.`);
+                toast.success('¡Completado!', `Se eliminaron ${deletedCount} de ${idsArray.length} eventos.`);
             } catch (error) {
-                toast.error('Error', 'No se pudo completar la acción.');
+                console.error('Bulk delete error:', error);
+                toast.error('Error', 'No se pudo completar la eliminación masiva.');
                 loadEvents();
             }
         }
@@ -126,8 +139,20 @@ const EventList = () => {
     const allMappedEvents = useMemo(() => {
         return rawEvents.map(e => {
             const getVal = (key) => e[key] || e[key.toLowerCase()] || e[key.toUpperCase()] || '';
+            const eventId = getVal('ID_Evento') || getVal('id') || '';
+            // Formatear código de evento: event-xxxx
+            let formattedCode = eventId;
+            if (eventId && !eventId.startsWith('event-')) {
+                // Si tiene un formato antiguo, extraer el número y reformatear
+                const match = eventId.match(/(\d+)/);
+                if (match) {
+                    formattedCode = `event-${match[1]}`;
+                }
+            }
+
             return {
-                id: getVal('ID_Evento') || getVal('id') || String(Math.random()),
+                id: eventId,
+                code: formattedCode,
                 nombre: getVal('Nombre_Evento') || 'Sin Nombre',
                 tipo: getVal('Tipo_Evento') || 'Otros',
                 alcance: getVal('Alcance') || 'Nacional',
@@ -192,10 +217,10 @@ const EventList = () => {
                         </div>
                         <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
                         <div className="flex gap-2">
-                            <button onClick={handleBulkDelete} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-black uppercase shadow-md shadow-red-500/20 transition-all">
+                            <button onClick={handleBulkDelete} className="btn-danger btn-sm">
                                 Eliminar
                             </button>
-                            <button onClick={() => setSelectedIds(new Set())} className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors">
+                            <button onClick={() => setSelectedIds(new Set())} className="btn-secondary btn-sm">
                                 Cancelar
                             </button>
                         </div>
@@ -213,8 +238,8 @@ const EventList = () => {
                     <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium text-sm tracking-wide">Registro de actividades académicas y participaciones.</p>
                 </div>
                 <div className="flex gap-3 w-full lg:w-auto">
-                    <button onClick={() => setIsExportModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl glass-panel font-bold text-sm text-slate-700 transition-all hover:bg-white/80"><Download size={18} className="text-green-500" /> Exportar</button>
-                    <Link to="/events/new" className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white shadow-xl shadow-green-600/20 transition-all font-black uppercase text-xs tracking-widest">
+                    <button onClick={() => setIsExportModalOpen(true)} className="btn-secondary flex items-center gap-2"><Download size={18} className="text-emerald-500" /> Exportar</button>
+                    <Link to="/events/new" className="btn-primary flex items-center gap-2">
                         <Plus size={20} /> Nuevo Evento
                     </Link>
                 </div>
@@ -230,10 +255,10 @@ const EventList = () => {
                             className="w-full pl-12 pr-4 py-2.5 rounded-xl apple-search outline-none text-sm font-medium"
                         />
                     </div>
-                    <button onClick={toggleSelectAll} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/5 transition-all">
+                    <button onClick={toggleSelectAll} className="btn-ghost flex items-center gap-2">
                         {currentItems.length > 0 && currentItems.every(e => selectedIds.has(e.id)) ? "Deseleccionar" : "Seleccionar Todo"}
                     </button>
-                    <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${showFilters ? 'bg-green-500/10 text-green-600' : 'text-slate-600 hover:bg-black/5'}`}>
+                    <button onClick={() => setShowFilters(!showFilters)} className={`btn-ghost flex items-center gap-2 ${showFilters ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : ''}`}>
                         <SlidersHorizontal size={18} /> Filtros
                     </button>
                 </div>
@@ -242,45 +267,45 @@ const EventList = () => {
                         <FilterSelect label="Tipo" value={filterType} onChange={setFilterType} options={['Todos', 'Seminario', 'Congreso', 'Simposio', 'Taller', 'Conferencia']} />
                         <FilterSelect label="Alcance" value={filterAlcance} onChange={setFilterAlcance} options={['Todos', 'Local', 'Nacional', 'Internacional']} />
                         <FilterSelect label="Modalidad" value={filterModalidad} onChange={setFilterModalidad} options={['Todos', 'Presencial', 'Virtual', 'Híbrida']} />
-                        <div className="flex items-end"><button onClick={() => { setFilterType('Todos'); setFilterAlcance('Todos'); setFilterModalidad('Todos'); setSearchTerm(''); }} className="w-full h-10 text-xs font-black text-red-500 uppercase tracking-widest hover:bg-red-50 rounded-xl transition-all">Limpiar</button></div>
+                        <div className="flex items-end"><button onClick={() => { setFilterType('Todos'); setFilterAlcance('Todos'); setFilterModalidad('Todos'); setSearchTerm(''); }} className="btn-ghost-danger w-full h-10 text-xs font-black uppercase tracking-widest">Limpiar</button></div>
                     </div>
                 )}
             </div>
 
             {/* LIST */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-4">
                 {loading ? (
-                    <div className="col-span-full p-20 text-center glass-panel rounded-3xl text-slate-400 font-bold uppercase tracking-widest animate-pulse">Cargando Actividades...</div>
+                    <div className="p-20 text-center glass-panel rounded-3xl text-slate-400 font-bold uppercase tracking-widest animate-pulse">Cargando Actividades...</div>
                 ) : processedEvents.length === 0 ? (
-                    <div className="col-span-full p-20 text-center glass-panel rounded-3xl text-slate-400 font-bold uppercase tracking-widest">Sin eventos encontrados</div>
+                    <div className="p-20 text-center glass-panel rounded-3xl text-slate-400 font-bold uppercase tracking-widest">Sin eventos encontrados</div>
                 ) : (
                     currentItems.map((event) => (
-                        <div key={event.id} onClick={() => toggleSelectOne(event.id)} className={`glass-row p-6 rounded-3xl flex flex-col sm:flex-row gap-6 items-start relative overflow-hidden group cursor-pointer ${selectedIds.has(event.id) ? 'ring-2 ring-green-500 !bg-green-50 dark:!bg-green-900/10' : ''}`}>
+                        <div key={event.id} onClick={() => toggleSelectOne(event.id)} className={`glass-row p-6 rounded-3xl flex flex-col lg:flex-row gap-6 items-start lg:items-center relative overflow-hidden group cursor-pointer ${selectedIds.has(event.id) ? 'ring-2 ring-green-500 !bg-green-50 dark:!bg-green-900/10' : ''}`}>
                             <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-green-500"></div>
                             {selectedIds.has(event.id) && (
                                 <div className="absolute top-4 right-4 bg-green-500 text-white p-1 rounded-full"><Plus size={14} className="rotate-45" /></div>
                             )}
-                            <div className="flex-1 space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-green-100 p-1.5 rounded-lg text-green-600"><Globe size={16} /></div>
+                            <div className="flex-1 space-y-3 w-full">
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <div className="flex items-center gap-3 flex-wrap">
+                                        <div className="bg-green-100 p-2 rounded-lg text-green-600"><Globe size={18} /></div>
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{event.tipo} • {event.alcance}</span>
                                     </div>
                                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border inline-flex items-center gap-1.5 uppercase bg-blue-500/10 text-blue-700 border-blue-200`}>
                                         {event.modalidad}
                                     </span>
                                 </div>
-                                <h3 className="text-base font-black text-slate-800 dark:text-white leading-tight uppercase line-clamp-2 tracking-tight">{event.nombre}</h3>
-                                <div className="flex flex-wrap gap-4 text-xs font-bold pt-1 text-slate-500">
-                                    <div className="flex items-center gap-2"><MapPin size={14} className="text-red-400" /> {event.lugar}</div>
-                                    <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {event.intensidad} Horas</div>
-                                    <div className="flex items-center gap-2"><Calendar size={14} className="text-green-400" /> {event.fechaInicio}</div>
+                                <h3 className="text-lg font-black text-slate-800 dark:text-white leading-tight uppercase tracking-tight">{event.nombre}</h3>
+                                <div className="flex flex-wrap gap-6 text-sm font-bold pt-1 text-slate-500">
+                                    <div className="flex items-center gap-2"><MapPin size={16} className="text-red-400" /> {event.lugar}</div>
+                                    <div className="flex items-center gap-2"><Clock size={16} className="text-blue-400" /> {event.intensidad} Horas</div>
+                                    <div className="flex items-center gap-2"><Calendar size={16} className="text-green-400" /> {event.fechaInicio}</div>
                                 </div>
                             </div>
-                            <div onClick={(e) => e.stopPropagation()} className="flex sm:flex-col gap-2 w-full sm:w-auto mt-2 sm:mt-0 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-                                <Link to={`/events/view/${event.id}`} className="flex-1 p-2.5 bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-600 rounded-xl transition-all flex justify-center" title="Ver Detalle"><Eye size={20} /></Link>
-                                <Link to={`/events/edit/${event.id}`} className="flex-1 p-2.5 bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-600 rounded-xl transition-all flex justify-center" title="Editar"><Edit size={20} /></Link>
-                                <button onClick={() => handleDelete(event.id)} className="flex-1 p-2.5 bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 rounded-xl transition-all flex justify-center" title="Eliminar"><Trash2 size={20} /></button>
+                            <div onClick={(e) => e.stopPropagation()} className="flex gap-2 w-full lg:w-auto opacity-0 group-hover:opacity-100 transition-all lg:translate-x-4 group-hover:translate-x-0">
+                                <Link to={`/events/view/${event.id}`} className="flex-1 lg:flex-none p-2.5 bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-600 rounded-xl transition-all flex justify-center" title="Ver Detalle"><Eye size={20} /></Link>
+                                <Link to={`/events/edit/${event.id}`} className="flex-1 lg:flex-none p-2.5 bg-slate-100 hover:bg-amber-100 text-slate-500 hover:text-amber-600 rounded-xl transition-all flex justify-center" title="Editar"><Edit size={20} /></Link>
+                                <button onClick={() => handleDelete(event.id)} className="flex-1 lg:flex-none p-2.5 bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 rounded-xl transition-all flex justify-center" title="Eliminar"><Trash2 size={20} /></button>
                             </div>
                         </div>
                     ))
@@ -290,9 +315,9 @@ const EventList = () => {
             {/* PAGINATION */}
             {!loading && totalPages > 1 && (
                 <div className="flex justify-center gap-3 mt-10">
-                    <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="p-3 glass-panel rounded-2xl disabled:opacity-30"><ChevronLeft size={20} /></button>
+                    <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="btn-ghost p-3 disabled:opacity-30"><ChevronLeft size={20} /></button>
                     <div className="px-6 py-3 glass-panel rounded-2xl font-black text-sm tracking-[0.2em]">{currentPage} / {totalPages}</div>
-                    <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="p-3 glass-panel rounded-2xl disabled:opacity-30"><ChevronRight size={20} /></button>
+                    <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="btn-ghost p-3 disabled:opacity-30"><ChevronRight size={20} /></button>
                 </div>
             )}
 

@@ -30,6 +30,7 @@ import ExternImport from './pages/externals/ExternImport';
 // Eventos e Impacto
 import EventList from './pages/events/EventList';
 import EventForm from './pages/events/EventForm';
+import ParticipationList from './pages/participations/ParticipationList';
 
 // Documentos
 import DocumentHub from './pages/documents/DocumentHub';
@@ -121,6 +122,9 @@ function App() {
               <Route path="events/new" element={<EventForm />} />
               <Route path="events/edit/:id" element={<EventForm />} />
               <Route path="events/view/:id" element={<EventForm />} />
+
+              {/* Participaciones */}
+              <Route path="participations" element={<ParticipationList />} />
 
               {/* Repositorio */}
               <Route path="repository" element={<RepositoryHome />} />

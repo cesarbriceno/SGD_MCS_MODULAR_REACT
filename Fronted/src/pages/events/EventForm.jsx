@@ -64,8 +64,9 @@ const EventForm = () => {
     const [formData, setFormData] = useState({
         Nombre_Evento: '', Tipo_Evento: 'Seminario', Alcance: 'Nacional', Modalidad: 'Presencial',
         Lugar: '', Fecha_Inicio: '', Fecha_Fin: '', Intensidad_Horaria: '',
-        Presupuesto: '', Fuente_Financiacion: '',
-        Impacto_Academico: '', URL_Evidencias: ''
+        Presupuesto: '', Fuente_Financiacion: '', Descripcion: '',
+        Impacto_Academico: '', URL_Evidencias: '',
+        Organizado_Por: '', Apoyado_Por: ''
     });
 
     // --- CÁLCULO DE DURACIÓN ---
@@ -98,8 +99,11 @@ const EventForm = () => {
                             Intensidad_Horaria: getVal('Intensidad_Horaria'),
                             Presupuesto: getVal('Presupuesto'),
                             Fuente_Financiacion: getVal('Fuente_Financiacion'),
+                            Descripcion: getVal('Descripcion'),
                             Impacto_Academico: getVal('Impacto_Academico'),
                             URL_Evidencias: getVal('URL_Evidencias'),
+                            Organizado_Por: getVal('Organizado_Por'),
+                            Apoyado_Por: getVal('Apoyado_Por'),
                             URL_Carpeta_Drive: getVal('URL_Carpeta_Drive') || getVal('URL_Evidencias'),
                             ID_Carpeta_Drive: getVal('ID_Carpeta_Drive')
                         });
@@ -265,6 +269,29 @@ const EventForm = () => {
 
                         {activeTab === 'ACA' && (
                             <section className="space-y-8 animate-fade-in">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Organizado Por</label>
+                                        <input
+                                            value={formData.Organizado_Por} onChange={e => setFormData(p => ({ ...p, Organizado_Por: e.target.value }))}
+                                            disabled={isView} className="w-full premium-input px-5" placeholder="Ej: Facultad de Ciencias Sociales"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Apoyado Por</label>
+                                        <input
+                                            value={formData.Apoyado_Por} onChange={e => setFormData(p => ({ ...p, Apoyado_Por: e.target.value }))}
+                                            disabled={isView} className="w-full premium-input px-5" placeholder="Ej: Vicerrectoría de Investigaciones"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Descripción del Evento</label>
+                                    <textarea
+                                        value={formData.Descripcion} onChange={e => setFormData(p => ({ ...p, Descripcion: e.target.value }))}
+                                        disabled={isView} className="w-full premium-input px-5 h-24 resize-none" placeholder="Describe brevemente el evento, objetivos y temática..."
+                                    />
+                                </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Impacto Académico / Gestión</label>
                                     <textarea

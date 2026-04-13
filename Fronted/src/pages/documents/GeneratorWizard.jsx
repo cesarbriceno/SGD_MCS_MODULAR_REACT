@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     ArrowLeft, Upload, User, Database, Play, Calendar, MapPin,
-    Briefcase, Search, CheckCircle, ChevronDown, BookOpen, GraduationCap, Mic, Clock, RefreshCw, ExternalLink, Download, Info, Mail, Loader2
+    Briefcase, Search, CheckCircle, ChevronDown, BookOpen, GraduationCap, Mic, Clock, RefreshCw, ExternalLink, Download, Info, Mail, Loader2, AlertTriangle
 } from 'lucide-react';
 import { api } from '../../services/api';
-import Swal from 'sweetalert2';
-import { PDFDownloadLink, PDFViewer, pdf } from '@react-pdf/renderer';
+import Swal, { glassAlert } from '../../utils/swalUtils';
+import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import CertificateTemplate from './CertificateTemplate';
+import CertificatePreviewHTML from './CertificatePreviewHTML';
+import QRCode from 'qrcode';
 
 /**
  * Convierte un Blob a Base64.
@@ -21,46 +23,77 @@ const blobToBase64 = (blob) => new Promise((resolve, reject) => {
     reader.readAsDataURL(blob);
 });
 
+// Removed HTML preview mechanism since it went out of sync and threw 403.
+
+/**
+ * Previsualización de PDF para descarga.
+ * Usa iframe con blob URL para el documento final generado.
+ */
 const SafePDFPreview = ({ pdfDoc }) => {
-    const [base64, setBase64] = useState(null);
-    
+    const [state, setState] = useState({ loading: true, error: null, blobUrl: null });
+
     useEffect(() => {
-        setBase64(null);
+        let cancelled = false;
+        setState({ loading: true, error: null, blobUrl: null });
+
         pdf(pdfDoc).toBlob()
-            .then(blob => blobToBase64(blob))
-            .then(setBase64)
-            .catch(err => console.error("Error preview:", err));
+            .then(blob => {
+                if (cancelled) return;
+                const url = URL.createObjectURL(blob);
+                setState({ loading: false, error: null, blobUrl: url });
+            })
+            .catch(err => {
+                if (!cancelled) {
+                    console.error("Error generando PDF:", err);
+                    setState({ loading: false, error: err.message || 'Error al generar PDF', blobUrl: null });
+                }
+            });
+
+        return () => { cancelled = true; };
     }, [pdfDoc]);
 
-    if (!base64) {
+    useEffect(() => {
+        return () => {
+            if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
+        };
+    }, [state.blobUrl]);
+
+    if (state.loading) {
         return (
-            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-10 text-center space-y-4">
+            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-10 text-center space-y-4 rounded-[2rem] bg-slate-50 dark:bg-slate-800/50">
                 <Loader2 size={48} className="animate-spin opacity-50" />
                 <p className="font-bold uppercase text-xs tracking-widest">Generando PDF...</p>
             </div>
         );
     }
 
+    if (state.error || !state.blobUrl) {
+        return (
+            <div className="w-full h-full flex flex-col items-center justify-center text-red-400 p-10 text-center space-y-4 rounded-[2rem] bg-red-50 dark:bg-red-900/10">
+                <AlertTriangle size={48} className="opacity-50" />
+                <p className="font-bold text-sm">{state.error || 'No se pudo generar el PDF'}</p>
+            </div>
+        );
+    }
+
     return (
-        <div className="w-full h-full relative group">
-            <iframe 
-                src={`data:application/pdf;base64,${base64}#view=FitH`} 
-                width="100%" 
-                height="100%" 
-                className="border-none w-full h-full rounded-[2rem]" 
+        <div className="w-full h-full relative rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-2xl">
+            <iframe
+                src={`${state.blobUrl}#view=FitH&navpanes=0&scrollbar=0`}
+                className="w-full h-full border-0"
+                title="Vista previa del certificado"
+                style={{ minHeight: '500px' }}
             />
-            {/* Fallback button for strict browsers like Brave that block iframe data URIs */}
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button 
-                    onClick={() => {
-                        const win = window.open();
-                        win.document.write(`<iframe src="data:application/pdf;base64,${base64}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-                    }}
-                    className="p-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl font-bold flex flex-col items-center gap-2 hover:bg-white transition-colors text-slate-800"
+            <div className="absolute bottom-4 right-4 flex gap-2">
+                <a
+                    href={state.blobUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl shadow-lg text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-900 transition-all border border-slate-200 dark:border-slate-700 hover:scale-105 active:scale-95"
                 >
-                    <ExternalLink size={24} className="text-blue-600" />
-                    <span>Navegador bloqueado? Abrir externo</span>
-                </button>
+                    <ExternalLink size={14} />
+                    Abrir en nueva pestaña
+                </a>
             </div>
         </div>
     );
@@ -90,27 +123,76 @@ const GeneratorWizard = ({ template, onBack }) => {
         nombre: '', cedula: '', email: '',
         programa: '', estado: 'Matriculado',
         tituloTesis: '', nota: '',
-        nombreEvento: template.title || 'Evento Académico MCS', rol: 'Asistente', tituloPonencia: '', horas: '20',
+        nombreEvento: template.title || 'Evento Académico MCS',
+        tipoEvento: 'Congreso',
+        alcance: 'Nacional',
+        modalidad: 'presencial',
+        lugarEvento: 'Montería',
+        fechaInicio: new Date().toISOString().split('T')[0],
+        fechaFin: new Date().toISOString().split('T')[0],
+        rol: 'Asistente',
+        tituloPonencia: '',
+        horas: '20',
         motivoCarta: 'Participación en calidad de experto', descCarta: 'Para nosotros es un honor...',
         lugar: 'Montería', fecha: new Date().toISOString().split('T')[0]
     });
 
     const [descriptionText, setDescriptionText] = useState('');
 
+    // --- VARIABLES DE DEBOUNCE PARA ESTABILIZAR EL PDF ---
+    const [debouncedData, setDebouncedData] = useState(data);
+    const [debouncedDesc, setDebouncedDesc] = useState(descriptionText);
+    const [uniqueCode, setUniqueCode] = useState('');
+    const [qrCodeUrl, setQrCodeUrl] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedData(data);
+            setDebouncedDesc(descriptionText);
+
+            // Generar código único si hay cédula (Sufijo de 4 caracteres alfanuméricos para unicidad)
+            if (data.cedula) {
+                const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+                const code = `SGD-MCS-${new Date().getFullYear()}-${data.cedula.slice(-4)}-${randomSuffix}`;
+                setUniqueCode(code);
+
+                // No generar QR, solo código de validación
+                setQrCodeUrl('');
+            }
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, [data, descriptionText]);
+
     // --- CARGAR DATOS REALES ---
     useEffect(() => {
         const r = (data.rol || '').toLowerCase();
+        const tipoEv = (data.tipoEvento || 'evento').toLowerCase();
+        const alcanceEv = data.alcance ? ` de carácter ${data.alcance.toLowerCase()}` : '';
+        const modal = (data.modalidad || 'presencial').toLowerCase();
+        const lugarEv = data.lugarEvento || data.lugar || 'Montería';
+        const eventName = data.nombreEvento || 'Evento';
+
+        let fechasStr = '';
+        if (data.fechaInicio && data.fechaFin) {
+            fechasStr = ` del ${data.fechaInicio} al ${data.fechaFin}`;
+        } else if (data.fechaInicio) {
+            fechasStr = ` el ${data.fechaInicio}`;
+        }
+
         let text = '';
         if (r === 'ponente' || r === 'tallerista') {
             const action = r === 'ponente' ? 'dictando la ponencia' : 'impartiendo el taller';
-            text = `Por su destacada participación en el evento "${data.nombreEvento}" realizado bajo la modalidad presencial en la ciudad de ${data.lugar}, en calidad de ${data.rol.toUpperCase()} ${action}: "${data.tituloPonencia || 'Sin título'}" con una duración de ${data.horas} horas académicas.`;
+            const titulo = data.rol === 'Ponente' ? data.tituloPonencia : (data.tituloPonencia || 'Sin título'); // Usa tituloPonencia para ambos en el estado
+            text = `Por su destacada participación en el ${tipoEv}${alcanceEv} "${eventName}" realizado${fechasStr} bajo la modalidad ${modal} en la ciudad de ${lugarEv}, en calidad de ${data.rol.toUpperCase()} ${action}: "${titulo || 'Sin título'}" con una duración de ${data.horas} horas académicas.`;
         } else if (r === 'organizador') {
-            text = `Por su destacada participación en el evento "${data.nombreEvento}" realizado bajo la modalidad presencial, en calidad de ORGANIZADOR colaborando activamente en la gestión, logística y ejecución exitosa del evento.`;
+            text = `Por su destacada participación en el ${tipoEv}${alcanceEv} "${eventName}" realizado${fechasStr} bajo la modalidad ${modal}, en calidad de ORGANIZADOR colaborando activamente en la gestión, logística y ejecución exitosa del mismo.`;
+        } else if (r === 'evaluador') {
+            text = `Por su destacada participación en el ${tipoEv}${alcanceEv} "${eventName}" realizado${fechasStr} bajo la modalidad ${modal} en la ciudad de ${lugarEv}, en calidad de EVALUADOR contribuyendo al análisis y evaluación académica del evento.`;
         } else {
-            text = `Por su destacada participación en el evento "${data.nombreEvento}" realizado bajo la modalidad presencial en la ciudad de ${data.lugar}, en calidad de ASISTENTE cumpliendo con la intensidad horaria de ${data.horas || '20'} horas y los requisitos académicos establecidos.`;
+            text = `Por su destacada participación en el ${tipoEv}${alcanceEv} "${eventName}" realizado${fechasStr} bajo la modalidad ${modal} en la ciudad de ${lugarEv}, en calidad de ASISTENTE cumpliendo con la intensidad horaria de ${data.horas || '20'} horas y los requisitos académicos establecidos para este evento.`;
         }
         setDescriptionText(text);
-    }, [data.rol, data.tituloPonencia, data.horas, data.nombreEvento, data.lugar]);
+    }, [data.rol, data.tituloPonencia, data.horas, data.nombreEvento, data.lugarEvento, data.tipoEvento, data.alcance, data.modalidad, data.fechaInicio, data.fechaFin]);
 
     useEffect(() => {
         loadData();
@@ -178,17 +260,16 @@ const GeneratorWizard = ({ template, onBack }) => {
         if (!data.email || !data.email.includes('@')) {
             const emailResult = await Swal.fire({
                 title: 'Email del Destinatario',
-                html: `<p style="font-size:13px;color:#64748b;margin-bottom:8px;">Ingresa el correo electrónico para enviar el certificado:</p>`,
+                html: `<p style="font-size:13px;margin-bottom:8px;">Ingresa el correo electrónico para enviar el certificado:</p>`,
                 input: 'email',
                 inputPlaceholder: 'correo@ejemplo.com',
                 showCancelButton: true,
                 confirmButtonText: 'Continuar',
                 cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#7c3aed',
                 inputValidator: (value) => {
                     if (!value || !value.includes('@')) return 'Ingresa un email válido';
                 },
-                customClass: { popup: 'rounded-3xl' }
+                ...glassAlert({ icon: 'question' })
             });
 
             if (!emailResult.isConfirmed) return;
@@ -206,15 +287,14 @@ const GeneratorWizard = ({ template, onBack }) => {
                     <p><strong>Email:</strong> ${data.email}</p>
                     <p><strong>Documento:</strong> ${template.title}</p>
                     <hr style="border:0;border-top:1px solid #e2e8f0;margin:12px 0;">
-                    <p style="color:#64748b;font-size:11px;">Se generará el PDF premium y se enviará adjunto por correo electrónico. También se guardará una copia en Google Drive.</p>
+                    <p style="font-size:11px;">Se generará el PDF premium y se enviará adjunto por correo electrónico. También se guardará una copia en Google Drive.</p>
                 </div>
             `,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Enviar Certificado',
             cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#7c3aed',
-            customClass: { popup: 'rounded-3xl' }
+            ...glassAlert({ icon: 'question' })
         });
 
         if (!confirm.isConfirmed) return;
@@ -223,7 +303,12 @@ const GeneratorWizard = ({ template, onBack }) => {
 
         try {
             // 1. Generar PDF en frontend
-            const pdfDoc = <CertificateTemplate data={data} templateTitle={template.title} description={descriptionText} />;
+            const pdfDoc = <CertificateTemplate
+                data={data}
+                templateTitle={template.title}
+                description={descriptionText}
+                uniqueCode={uniqueCode}
+            />;
             const blob = await pdf(pdfDoc).toBlob();
             const base64 = await blobToBase64(blob);
 
@@ -247,13 +332,12 @@ const GeneratorWizard = ({ template, onBack }) => {
                         <div style="text-align:center;font-size:14px;line-height:1.8;">
                             <p style="font-size:48px;">📬</p>
                             <p>El certificado fue enviado exitosamente a:</p>
-                            <p style="font-weight:800;color:#7c3aed;">${data.email}</p>
-                            ${res.fileId ? '<p style="font-size:11px;color:#94a3b8;">También fue guardado en Google Drive.</p>' : ''}
+                            <p style="font-weight:800;">${data.email}</p>
+                            ${res.fileId ? '<p style="font-size:11px;">También fue guardado en Google Drive.</p>' : ''}
                         </div>
                     `,
                     confirmButtonText: 'Perfecto',
-                    confirmButtonColor: '#22c55e',
-                    customClass: { popup: 'rounded-3xl' }
+                    ...glassAlert({ icon: 'success' })
                 });
             } else {
                 throw new Error(res.message || 'Error al enviar');
@@ -264,7 +348,7 @@ const GeneratorWizard = ({ template, onBack }) => {
                 icon: 'error',
                 title: 'Error al Enviar',
                 text: error.message || 'No se pudo enviar el certificado por correo.',
-                customClass: { popup: 'rounded-3xl' }
+                ...glassAlert({ icon: 'error' })
             });
         } finally {
             setIsSendingEmail(false);
@@ -294,21 +378,64 @@ const GeneratorWizard = ({ template, onBack }) => {
         if (isEvent) return (
             <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800 space-y-3">
                 <div><label className="label-tiny">Nombre del Evento</label><input type="text" className="input-premium" value={data.nombreEvento} onChange={e => setData({ ...data, nombreEvento: e.target.value })} /></div>
+
                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="label-tiny">Tipo de Evento</label>
+                        <select className="input-premium" value={data.tipoEvento || 'Congreso'} onChange={e => setData({ ...data, tipoEvento: e.target.value })}>
+                            <option value="Congreso">Congreso</option>
+                            <option value="Seminario">Seminario</option>
+                            <option value="Simposio">Simposio</option>
+                            <option value="Taller">Taller</option>
+                            <option value="Diplomado">Diplomado</option>
+                            <option value="Curso">Curso</option>
+                            <option value="Foro">Foro</option>
+                            <option value="Evento">Evento Académico</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="label-tiny">Alcance</label>
+                        <select className="input-premium" value={data.alcance || 'Nacional'} onChange={e => setData({ ...data, alcance: e.target.value })}>
+                            <option value="Internacional">Internacional</option>
+                            <option value="Nacional">Nacional</option>
+                            <option value="Regional">Regional</option>
+                            <option value="Institucional">Institucional</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                    <div><label className="label-tiny">Lugar del Evento</label><input type="text" className="input-premium" value={data.lugarEvento} onChange={e => setData({ ...data, lugarEvento: e.target.value })} /></div>
+                    <div><label className="label-tiny">Fecha Inicio</label><input type="date" className="input-premium" value={data.fechaInicio} onChange={e => setData({ ...data, fechaInicio: e.target.value })} /></div>
+                    <div><label className="label-tiny">Fecha Fin</label><input type="date" className="input-premium" value={data.fechaFin} onChange={e => setData({ ...data, fechaFin: e.target.value })} /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
                     <div>
                         <label className="label-tiny">Rol</label>
                         <select className="input-premium" value={data.rol} onChange={e => setData({ ...data, rol: e.target.value })}>
-                            <option>Asistente</option><option>Ponente</option><option>Organizador</option><option>Tallerista</option>
+                            <option>Asistente</option>
+                            <option>Ponente</option>
+                            <option>Tallerista</option>
+                            <option>Organizador</option>
+                            <option>Evaluador</option>
                         </select>
                     </div>
                     <div><label className="label-tiny">Horas</label><input type="text" className="input-premium" value={data.horas} onChange={e => setData({ ...data, horas: e.target.value })} /></div>
+                    <div>
+                        <label className="label-tiny">Modalidad</label>
+                        <select className="input-premium" value={data.modalidad || 'presencial'} onChange={e => setData({ ...data, modalidad: e.target.value })}>
+                            <option value="presencial">Presencial</option>
+                            <option value="virtual">Virtual</option>
+                            <option value="mixta">Mixta</option>
+                        </select>
+                    </div>
                 </div>
-                {data.rol === 'Ponente' && (
+                {(data.rol === 'Ponente' || data.rol === 'Tallerista') && (
                     <div className="animate-in slide-in-from-top duration-300">
-                        <label className="label-tiny">Título de la Ponencia</label>
+                        <label className="label-tiny">{data.rol === 'Ponente' ? 'Título de la Ponencia' : 'Título del Taller'}</label>
                         <textarea
                             className="input-premium h-16"
-                            placeholder="Ingrese el título de la ponencia..."
+                            placeholder={`Ingrese el título d${data.rol === 'Ponente' ? 'e la Ponencia' : 'el Taller'}...`}
                             value={data.tituloPonencia}
                             onChange={e => setData({ ...data, tituloPonencia: e.target.value })}
                         />
@@ -323,7 +450,7 @@ const GeneratorWizard = ({ template, onBack }) => {
         <div className="space-y-6 animate-fade-in">
             {/* Nav */}
             <div className="flex items-center justify-between">
-                <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold">
+                <button onClick={onBack} className="btn-ghost flex items-center gap-2">
                     <ArrowLeft size={18} /> Volver al Hub
                 </button>
                 <div className="flex items-center gap-2">
@@ -396,7 +523,7 @@ const GeneratorWizard = ({ template, onBack }) => {
                             <div><label className="label-tiny">Lugar de Expedición</label><input type="text" className="input-premium" value={data.lugar} onChange={e => setData({ ...data, lugar: e.target.value })} /></div>
                             <div><label className="label-tiny">Fecha</label><input type="date" className="input-premium" value={data.fecha} onChange={e => setData({ ...data, fecha: e.target.value })} /></div>
                         </div>
-                        <button onClick={() => setStep(2)} className="btn-primary w-full mt-6 py-3 font-bold text-lg">Revisar y Emitir</button>
+                        <button onClick={() => setStep(2)} className="btn-primary w-full mt-6 py-3">Revisar y Emitir</button>
                     </div>
                 </div>
             ) : (
@@ -450,19 +577,17 @@ const GeneratorWizard = ({ template, onBack }) => {
                         <div className="flex-[1.5] flex flex-col gap-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">Previsualización Real</h3>
-                                    <span className="px-2 py-0.5 bg-green-500/10 text-green-600 rounded text-[9px] font-black uppercase tracking-widest border border-green-500/20">WYSIWYG</span>
+                                    <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">Vista Previa en Vivo</h3>
+                                    <span className="px-2 py-0.5 bg-green-500/10 text-green-600 rounded text-[9px] font-black uppercase tracking-widest border border-green-500/20">EN TIEMPO REAL</span>
                                 </div>
                             </div>
-                            <div className="flex-1 rounded-[2rem] overflow-hidden border-2 border-slate-200 dark:border-slate-800 bg-slate-50 shadow-2xl min-h-[500px] h-[500px]">
-                                {data.nombre && data.cedula ? (
-                                    <SafePDFPreview pdfDoc={<CertificateTemplate data={data} templateTitle={template.title} description={descriptionText} />} />
-                                ) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-10 text-center space-y-4">
-                                        <Info size={48} className="opacity-20" />
-                                        <p className="font-bold uppercase text-xs tracking-widest">Ingrese el nombre y cédula en el paso anterior para generar la previsualización.</p>
-                                    </div>
-                                )}
+                            <div className="flex-1 min-h-[450px]">
+                                <CertificatePreviewHTML
+                                    data={data}
+                                    description={descriptionText}
+                                    uniqueCode={uniqueCode}
+                                    qrCodeUrl={qrCodeUrl}
+                                />
                             </div>
                         </div>
                     </div>
@@ -474,8 +599,16 @@ const GeneratorWizard = ({ template, onBack }) => {
                             </button>
 
                             <PDFDownloadLink
-                                document={<CertificateTemplate data={data} templateTitle={template.title} description={descriptionText} />}
-                                fileName={`${template.title.replace(/\s+/g, '_')}_${data.nombre.replace(/\s+/g, '_')}.pdf`}
+                                document={
+                                    <CertificateTemplate
+                                        data={debouncedData}
+                                        templateTitle={template.title}
+                                        description={debouncedDesc}
+                                        uniqueCode={uniqueCode}
+                                        qrCodeUrl={qrCodeUrl}
+                                    />
+                                }
+                                fileName={`${template.title.replace(/\s+/g, '_')}_${debouncedData.nombre.replace(/\s+/g, '_')}.pdf`}
                                 className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-500 transition-all font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20"
                             >
                                 {({ loading }) =>

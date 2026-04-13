@@ -207,27 +207,43 @@ function uploadFile(folderId, fileData) {
  * Lista todos los archivos (no carpetas) dentro de una carpeta de Drive.
  * Llamado desde el frontend como: api.drive.getFiles(folderId)
  * @param {string} folderId - ID de la carpeta de Drive
- * @returns {string} JSON con array de archivos [{id, name, mimeType, url, size, lastUpdated}]
+ * @returns {string} JSON con array de archivos [{id, name, mimeType, url, size, lastUpdated, folderName}]
  */
 function getFiles(folderId) {
     try {
         if (!folderId) return JSON.stringify([]);
 
-        const folder = DriveApp.getFolderById(folderId);
-        const filesIter = folder.getFiles();
+        const mainFolder = DriveApp.getFolderById(folderId);
         const result = [];
 
-        while (filesIter.hasNext()) {
-            const file = filesIter.next();
-            result.push({
-                id: file.getId(),
-                name: file.getName(),
-                mimeType: file.getMimeType(),
-                url: file.getUrl(),
-                size: file.getSize(),
-                lastUpdated: file.getLastUpdated().toISOString()
-            });
+        // Función recursiva para obtener archivos de una carpeta y sus subcarpetas
+        function getFilesFromFolder(folder, folderPath) {
+            // Obtener archivos de esta carpeta
+            const filesIter = folder.getFiles();
+            while (filesIter.hasNext()) {
+                const file = filesIter.next();
+                result.push({
+                    id: file.getId(),
+                    name: file.getName(),
+                    mimeType: file.getMimeType(),
+                    url: file.getUrl(),
+                    size: file.getSize(),
+                    lastUpdated: file.getLastUpdated().toISOString(),
+                    folderName: folderPath
+                });
+            }
+
+            // Obtener subcarpetas y procesarlas recursivamente
+            const foldersIter = folder.getFolders();
+            while (foldersIter.hasNext()) {
+                const subFolder = foldersIter.next();
+                const subFolderPath = folderPath ? folderPath + ' / ' + subFolder.getName() : subFolder.getName();
+                getFilesFromFolder(subFolder, subFolderPath);
+            }
         }
+
+        // Iniciar desde la carpeta principal
+        getFilesFromFolder(mainFolder, mainFolder.getName());
 
         // Ordenar por fecha desc (más reciente primero)
         result.sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated));

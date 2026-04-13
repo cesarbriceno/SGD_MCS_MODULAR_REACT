@@ -81,7 +81,7 @@ const ExportModal = ({ isOpen, onClose, data, sourceName = "Reporte" }) => {
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white">Configurar Exportación</h3>
                         <p className="text-xs font-medium text-gray-500">NEXODO • {sourceName}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-gray-200 dark:bg-white/10 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">
+                    <button onClick={onClose} className="btn-ghost p-2">
                         <X size={20} strokeWidth={2.5} />
                     </button>
                 </div>
@@ -213,13 +213,13 @@ const ExportModal = ({ isOpen, onClose, data, sourceName = "Reporte" }) => {
 
                 {/* FOOTER ACCIONES */}
                 <div className="p-5 bg-gray-50/80 dark:bg-white/5 backdrop-blur-md border-t border-gray-100 dark:border-white/10 flex justify-end gap-3">
-                    <button onClick={onClose} className="px-6 py-3 rounded-2xl font-bold text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-white/5 border border-gray-200 dark:border-transparent hover:bg-gray-100 dark:hover:bg-white/10 transition-all shadow-sm">
+                    <button onClick={onClose} className="btn-secondary">
                         Cancelar
                     </button>
                     <button
                         onClick={handleExport}
                         disabled={selectedColumns.length === 0}
-                        className="px-8 py-3 rounded-2xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/30 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="btn-primary flex items-center gap-2"
                     >
                         <Download size={18} strokeWidth={2.5} />
                         Descargar

@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard, Users, GraduationCap, FileText,
-    Calendar, FileBadge, LogOut, X, Globe, FolderOpen
+    Calendar, FileBadge, LogOut, X, Globe, FolderOpen, UserCheck
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -14,6 +14,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { icon: FileText, label: 'Tesis', path: '/thesis' },
         { icon: Globe, label: 'Externos', path: '/externals' },
         { icon: Calendar, label: 'Eventos', path: '/events' },
+        { icon: UserCheck, label: 'Participaciones', path: '/participations' },
         { icon: FileBadge, label: 'Documentos', path: '/documents' },
         { icon: FolderOpen, label: 'Repositorio', path: '/repository' },
     ];
@@ -49,7 +50,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 {/* HEADER MÓVIL (Solo para cerrar en celular) */}
                 <div className="flex justify-between items-center px-6 mb-2 md:hidden">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Menú</span>
-                    <button onClick={onClose} className="p-1 text-slate-400 hover:text-red-500"><X size={18} /></button>
+                    <button onClick={onClose} className="btn-ghost p-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><X size={18} /></button>
                 </div>
 
                 {/* TÍTULO DECORATIVO (Desktop) */}
@@ -92,9 +93,9 @@ const Sidebar = ({ isOpen, onClose }) => {
 
                 {/* FOOTER */}
                 <div className="px-3 mt-auto pt-4 border-t border-slate-200/20 dark:border-white/10">
-                    <button className="w-full flex items-center px-4 py-3 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-red-500/10 hover:text-red-500 transition-all duration-300 group">
-                        <LogOut size={20} className="mr-3 group-hover:-translate-x-1 transition-transform" />
-                        <span className="text-sm font-medium">Cerrar Sesión</span>
+                    <button className="w-full flex items-center justify-center gap-2 px-4 py-3 btn-danger rounded-2xl group">
+                        <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+                        <span className="text-sm font-bold">Cerrar Sesión</span>
                     </button>
                 </div>
             </aside>

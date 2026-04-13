@@ -129,7 +129,7 @@ const BulkEditModal = ({ isOpen, onClose, selectedIds, type = 'estudiante', onSu
                         <Layers size={20} className="text-primary" />
                         <h3 className="font-bold text-lg">Edición Masiva</h3>
                     </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10">
+                    <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -228,14 +228,14 @@ const BulkEditModal = ({ isOpen, onClose, selectedIds, type = 'estudiante', onSu
                 <div className="p-4 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-700">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white font-medium text-sm transition-colors"
+                        className="btn-secondary"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={!fieldToEdit || !newValue || loading}
-                        className="px-6 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg font-bold shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95"
+                        className="btn-primary flex items-center gap-2"
                     >
                         {loading ? (
                             <>

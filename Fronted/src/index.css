@@ -37,6 +37,83 @@
     @apply bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl;
   }
 
+  /* ===========================
+     BOTONES GLOBALES
+     =========================== */
+
+  /* -- Primario: acciones principales (guardar, crear, enviar, descargar) -- */
+  .btn-primary {
+    @apply rounded-xl bg-gradient-to-r from-primary to-primary-hover px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all duration-200 hover:shadow-primary/40 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+  }
+
+  /* -- Secundario: acciones alternativas (cancelar, volver, filtrar) -- */
+  .btn-secondary {
+    @apply rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+    bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700
+    hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm hover:shadow;
+  }
+
+  /* -- Peligro: eliminar, borrar, acciones destructivas -- */
+  .btn-danger {
+    @apply rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-500/25 transition-all duration-200 hover:bg-red-500 hover:shadow-red-500/40 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+  }
+
+  /* -- Ghost/Fantasma: iconos, toggles, acciones sutiles -- */
+  .btn-ghost {
+    @apply rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
+    text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-slate-200
+    active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* -- Ghost Danger: eliminar individual, remover -- */
+  .btn-ghost-danger {
+    @apply rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200
+    text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400
+    active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* -- Tamaños -- */
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+  .btn-lg {
+    @apply px-8 py-3 text-base;
+  }
+
+  /* ===========================
+     NOTIFICACIONES / ALERTAS GLOBALES
+     =========================== */
+
+  /* Fondo base glass para modales y overlays */
+  .overlay-glass {
+    @apply bg-black/40 backdrop-blur-sm;
+  }
+
+  /* Fondo estándar para modales glass */
+  .modal-glass {
+    @apply bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl;
+  }
+
+  /* Fondo para tarjetas de éxito */
+  .card-success {
+    @apply bg-emerald-50/80 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-200;
+  }
+
+  /* Fondo para tarjetas de error */
+  .card-error {
+    @apply bg-red-50/80 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 text-red-800 dark:text-red-200;
+  }
+
+  /* Fondo para tarjetas de advertencia */
+  .card-warning {
+    @apply bg-amber-50/80 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-200;
+  }
+
+  /* Fondo para tarjetas de información */
+  .card-info {
+    @apply bg-blue-50/80 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 text-blue-800 dark:text-blue-200;
+  }
+
   .card-premium {
     @apply glass-panel rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
   }
